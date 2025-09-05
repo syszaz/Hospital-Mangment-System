@@ -95,3 +95,35 @@ export const listAllDoctors = async (req, res, next) => {
     next(error);
   }
 };
+
+// list doctors with filters
+export const listDoctorsWithFilters = async (req, res, next) => {
+  try {
+    const { specialization, minFee, maxFee, minExperience, maxExperience } =
+      req.query;
+
+    let filter = { isApproved: true };
+
+    if (specialization) {
+      filter.specialization = specialization;
+    }
+
+    if (minFee || maxFee) {
+      filter.consultationFee = {};
+      if (minFee) filter.consultationFee.$gte = Number(minFee);
+      if (maxFee) filter.consultationFee.$lte = Number(maxFee);
+    }
+
+    if (minExperience || maxExperience) {
+      filter.experience = {};
+      if (minExperience) filter.experience.$gte = Number(minExperience);
+      if (maxExperience) filter.experience.$lte = Number(maxExperience);
+    }
+
+    const doctors = await Doctor.find(filter).populate("user", "name email");
+
+    res.status(200).json({ message: "doctors find successful", doctors });
+  } catch (error) {
+    next(error);
+  }
+};
