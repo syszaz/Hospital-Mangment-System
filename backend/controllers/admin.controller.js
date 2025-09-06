@@ -1,4 +1,4 @@
-import { Doctor } from "../models/Doctor.js";
+import { Doctor } from "../models/Doctor.js";;
 
 // approve doctor
 export const approveDoctor = async (req, res, next) => {
@@ -10,7 +10,7 @@ export const approveDoctor = async (req, res, next) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    if(doctor.isApproved === true) {
+    if (doctor.isApproved) {
       return res.status(400).json({ message: "Doctor is already approved" });
     }
 
@@ -19,7 +19,7 @@ export const approveDoctor = async (req, res, next) => {
     await doctor.save();
 
     res.status(200).json({
-      message: "Doctor approved successfully",
+      message: "Doctor approved successfully and slots created for 30 days",
       doctor,
     });
   } catch (error) {
@@ -37,8 +37,10 @@ export const notApproveDoctor = async (req, res, next) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    if(doctor.isApproved === false) {
-      return res.status(400).json({ message: "Doctor is already dis-approved" });
+    if (doctor.isApproved === false) {
+      return res
+        .status(400)
+        .json({ message: "Doctor is already dis-approved" });
     }
 
     doctor.isApproved = false;

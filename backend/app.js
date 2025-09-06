@@ -6,6 +6,7 @@ import doctorRouter from "./routes/doctor.route.js";
 import { errorHandler } from "./middlewares/error.js";
 import userRouter from "./routes/user.route.js";
 import adminRouter from "./routes/admin.route.js";
+import appointmentRouter from "./routes/appointment.route.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/auth", authRouter);
 app.use("/user", userRouter); 
 app.use("/doctor", doctorRouter);
 app.use("/admin", adminRouter);
+app.use("/seats", appointmentRouter);
 
 
 app.use(errorHandler);

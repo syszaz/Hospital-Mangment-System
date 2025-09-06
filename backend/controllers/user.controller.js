@@ -4,18 +4,26 @@ import { User } from "../models/User.js";
 export const updateUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
-    const updates = req.body;
+    const { name, email } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "user profile not found" });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updates,
-      { new: true }
-    );
+    if (!name || !email) {
+      return res
+        .status(400)
+        .json({ message: "name or email are required" });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (email) updateFields.email = email;
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+    });
 
     res.status(200).json({
       message: "user updated successfully",
