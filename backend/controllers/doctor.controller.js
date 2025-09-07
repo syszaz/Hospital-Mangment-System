@@ -1,5 +1,7 @@
+import moment from "moment";
 import { Doctor } from "../models/Doctor.js";
 import { User } from "../models/User.js";
+import { Appointment } from "../models/Appointment.js";
 
 // create doctor profile
 export const createDocotorProfile = async (req, res, next) => {
@@ -123,6 +125,119 @@ export const listDoctorsWithFilters = async (req, res, next) => {
     const doctors = await Doctor.find(filter).populate("user", "name email");
 
     res.status(200).json({ message: "doctors find successful", doctors });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// get available seats for a doctor on a specific date
+export const getAvailableSeatsForDoctor = async (req, res, next) => {
+  try {
+    const doctorId = req.params.id;
+    const date = req.query.date;
+
+    if (!doctorId) {
+      return res.status(400).json({ message: "Doctor ID is required" });
+    }
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    const selectedDate = moment(date).startOf("day");
+    const dayOfWeek = selectedDate.format("dddd");
+
+    if (doctor.daysOff.some((d) => moment(d).isSame(selectedDate, "day"))) {
+      return res.status(200).json({
+        success: true,
+        message: "Doctor is off on this date",
+        slots: [],
+      });
+    }
+
+    const availability = doctor.availability.find((a) => a.day === dayOfWeek);
+    if (!availability) {
+      return res.status(200).json({
+        success: true,
+        message: `Doctor is not available on ${dayOfWeek}s`,
+        slots: [],
+      });
+    }
+
+    const bookedCount = await Appointment.countDocuments({
+      doctor: doctorId,
+      date: selectedDate.toDate(),
+      status: { $in: ["pending", "confirmed"] },
+    });
+
+    const remainingSeats = availability.maxPatientsPerDay - bookedCount;
+
+    res.status(200).json({
+      success: true,
+      message: "Available slots fetched successfully",
+      slots:
+        remainingSeats > 0
+          ? [
+              {
+                date: selectedDate.toDate(),
+                day: dayOfWeek,
+                startTime: availability.startTime,
+                endTime: availability.endTime,
+                remainingSeats,
+              },
+            ]
+          : [],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// approve an appointment of a patient
+export const approveAppointment = async (req, res, next) => {
+  try {
+    const appointmentId = req.params.id;
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+    if (appointment.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Only pending appointments can be approved" });
+    }
+    appointment.status = "confirmed";
+    await appointment.save();
+    res
+      .status(200)
+      .json({ message: "Appointment approved successfully", appointment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// cancel an appointment of a patient
+export const cancelAppointment = async (req, res, next) => {
+  try {
+    const appointmentId = req.params.id;
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+    if (appointment.status === "cancelled") {
+      return res
+        .status(400)
+        .json({ message: "Appointment is already cancelled" });
+    }
+    appointment.status = "cancelled";
+    await appointment.save();
+    res
+      .status(200)
+      .json({ message: "Appointment cancelled successfully", appointment });
   } catch (error) {
     next(error);
   }
