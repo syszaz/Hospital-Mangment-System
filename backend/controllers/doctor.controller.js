@@ -2,6 +2,7 @@ import moment from "moment";
 import { Doctor } from "../models/Doctor.js";
 import { User } from "../models/User.js";
 import { Appointment } from "../models/Appointment.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // create doctor profile
 export const createDocotorProfile = async (req, res, next) => {
@@ -22,10 +23,12 @@ export const createDocotorProfile = async (req, res, next) => {
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
     const existingProfile = await Doctor.findOne({ user: req.user._id });
     if (existingProfile) {
       return res.status(400).json({ message: "Doctor profile already exists" });
     }
+
     const newDoctor = new Doctor({
       user: req.user._id,
       specialization,
@@ -34,7 +37,34 @@ export const createDocotorProfile = async (req, res, next) => {
       clinicAddress,
       availability,
     });
+
     await newDoctor.save();
+
+    const doctorUser = await User.findById(req.user._id);
+
+    await sendEmail({
+      to: doctorUser.email,
+      subject: "Profile Created - Pending Approval",
+      html: `
+        <h2>Hi ${doctorUser.name},</h2>
+        <p>Your doctor profile has been created successfully.</p>
+        <p>Status: <b>Pending Approval</b></p>
+        <p>We’ll notify you once it’s approved by the admin.</p>
+      `,
+    });
+
+    await sendEmail({
+      to: process.env.ADMIN_EMAIL,
+      subject: "New Doctor Profile Awaiting Approval",
+      html: `
+        <h2>New Doctor Registration</h2>
+        <p><b>Name:</b> ${doctorUser.name}</p>
+        <p><b>Email:</b> ${doctorUser.email}</p>
+        <p><b>Specialization:</b> ${specialization}</p>
+        <p>Please review and approve/reject this profile in the admin panel.</p>
+      `,
+    });
+
     res.status(201).json({
       message: "Doctor profile created successfully",
       doctor: newDoctor,
@@ -55,6 +85,10 @@ export const updateDoctorProfile = async (req, res, next) => {
     if (!updatedDoctor) {
       return res.status(404).json({ message: "Doctor profile not found" });
     }
+    if (doctorId !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized action" });
+    }
+
     res.status(200).json({
       message: "Doctor profile updated successfully",
       doctor: updatedDoctor,
@@ -72,6 +106,10 @@ export const deleteDoctorProfileAndAccount = async (req, res, next) => {
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(400).json({ message: "Doctor not found" });
+    }
+
+    if (doctorId !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized action" });
     }
 
     await Doctor.findByIdAndDelete(doctorId);
@@ -212,6 +250,22 @@ export const approveAppointment = async (req, res, next) => {
     }
     appointment.status = "confirmed";
     await appointment.save();
+
+    await sendEmail({
+      to: appointment.patient.email,
+      subject: "Your Appointment is Confirmed",
+      html: `
+        <h2>Hello ${appointment.patient.name},</h2>
+        <p>Your appointment with Dr. ${
+          appointment.doctor.user.name
+        } has been <b>confirmed</b>.</p>
+        <p><b>Date:</b> ${appointment.date.toDateString()}</p>
+        <p><b>Time:</b> ${appointment.startTime} - ${appointment.endTime}</p>
+        <p>Please make sure to arrive on time.</p>
+        <p>Regards,<br/>Healthcare Platform Team</p>
+      `,
+    });
+
     res
       .status(200)
       .json({ message: "Appointment approved successfully", appointment });
@@ -235,6 +289,21 @@ export const cancelAppointment = async (req, res, next) => {
     }
     appointment.status = "cancelled";
     await appointment.save();
+
+    await sendEmail({
+      to: appointment.patient.email,
+      subject: "Your Appointment is Cancelled",
+      html: `
+        <h2>Hello ${appointment.patient.name},</h2>
+        <p>Your appointment with Dr. ${
+          appointment.doctor.user.name
+        } has been <b>cancelled</b>.</p>
+        <p><b>Date:</b> ${appointment.date.toDateString()}</p>
+        <p>If this is a mistake, please try booking again.</p>
+        <p>Regards,<br/>Healthcare Platform Team</p>
+      `,
+    });
+    
     res
       .status(200)
       .json({ message: "Appointment cancelled successfully", appointment });

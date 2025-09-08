@@ -1,6 +1,7 @@
 import moment from "moment";
 import { Doctor } from "../models/Doctor.js";
 import { Appointment } from "../models/Appointment.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // book an appointment with a doctor
 export const bookAppointment = async (req, res, next) => {
@@ -82,6 +83,24 @@ export const bookAppointment = async (req, res, next) => {
         populate: { path: "user", select: "name email" },
       })
       .populate("patient", "name email");
+
+    await sendEmail({
+      to: newAppointment.patient.email,
+      subject: "Your Appointment Request is Pending",
+      html: `
+        <h2>Hello ${newAppointment.patient.name},</h2>
+        <p>Your appointment request has been received and is <b>waiting for doctor's approval</b>.</p>
+        <p><b>Doctor:</b> Dr. ${newAppointment.doctor.user.name} (${
+        newAppointment.doctor.specialization
+      })</p>
+        <p><b>Date:</b> ${newAppointment.date.toDateString()}</p>
+        <p><b>Time:</b> ${newAppointment.startTime} - ${
+        newAppointment.endTime
+      }</p>
+        <p>We will notify you once the doctor confirms your appointment.</p>
+        <p>Regards,<br/>Healthcare Platform Team</p>
+      `,
+    });
 
     res.status(201).json({
       success: true,

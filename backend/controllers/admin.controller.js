@@ -1,4 +1,5 @@
-import { Doctor } from "../models/Doctor.js";;
+import { Doctor } from "../models/Doctor.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // approve doctor
 export const approveDoctor = async (req, res, next) => {
@@ -17,6 +18,17 @@ export const approveDoctor = async (req, res, next) => {
     doctor.isApproved = true;
     doctor.status = "approved";
     await doctor.save();
+
+    await sendEmail({
+      to: doctor.user.email,
+      subject: "Doctor Profile Approved",
+      html: `
+        <h2>Hello Dr. ${doctor.user.name},</h2>
+        <p>Your profile has been <b>approved</b> by the admin and is now live on our platform.</p>
+        <p>Patients can now view your profile and book appointments with you.</p>
+        <p>Regards,<br/>Healthcare Platform Team</p>
+      `,
+    });
 
     res.status(200).json({
       message: "Doctor approved successfully and slots created for 30 days",
@@ -46,6 +58,17 @@ export const notApproveDoctor = async (req, res, next) => {
     doctor.isApproved = false;
     doctor.status = "rejected";
     await doctor.save();
+
+    await sendEmail({
+      to: doctor.user.email,
+      subject: "Doctor Profile Rejected",
+      html: `
+        <h2>Hello Dr. ${doctor.user.name},</h2>
+        <p>We regret to inform you that your profile has been <b>rejected</b> by the admin.</p>
+        <p>If you believe this is a mistake or wish to reapply, please update your profile and submit again.</p>
+        <p>Regards,<br/>Healthcare Platform Team</p>
+      `,
+    });
 
     res.status(200).json({
       message: "Doctor dis-approved successfully",
