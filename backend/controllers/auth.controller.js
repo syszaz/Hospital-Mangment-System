@@ -5,8 +5,8 @@ import bcrypt from "bcrypt";
 // signup
 export const SignUpUser = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password || email.length <= 0) {
+    const { name, email, password, confirmPassword, role } = req.body;
+    if (!name || !email || !password || !confirmPassword || email.length <= 0) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -17,6 +17,13 @@ export const SignUpUser = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Password must be at least 6 characterbrunos",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords does not match",
       });
     }
 
@@ -48,8 +55,8 @@ export const SignUpUser = async (req, res, next) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
-        token,
       },
+      token,
     });
   } catch (error) {
     next(error);
@@ -99,8 +106,8 @@ export const SignInUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        token,
       },
+      token,
     });
   } catch (error) {
     next(error);

@@ -8,11 +8,19 @@ import userRouter from "./routes/user.route.js";
 import adminRouter from "./routes/admin.route.js";
 import appointmentRouter from "./routes/appointment.route.js";
 import patientRouter from "./routes/patient.route.js";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 connectDB();
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -22,12 +30,11 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRouter);
-app.use("/user", userRouter); 
-app.use("/patient", patientRouter); 
+app.use("/user", userRouter);
+app.use("/patient", patientRouter);
 app.use("/doctor", doctorRouter);
 app.use("/admin", adminRouter);
 app.use("/appointment", appointmentRouter);
-
 
 app.use(errorHandler);
 
