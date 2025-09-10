@@ -32,7 +32,7 @@ export const createPatientProfile = async (req, res, next) => {
 
     const user = req.user;
 
-    await sendEmail({
+    sendEmail({
       to: user.email,
       subject: "Patient Profile Created",
       html: `
@@ -41,7 +41,15 @@ export const createPatientProfile = async (req, res, next) => {
         <p>You can now book appointments with doctors and manage your medical history through our platform.</p>
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
-    });
+    })
+      .then((result) => {
+        if (result.error || !result.success) {
+          console.error("Email send failed:", result.error);
+        }
+      })
+      .catch((err) => {
+        console.error("Email error:", err);
+      });
 
     res.status(201).json({
       message: "Patient profile created successfully",

@@ -4,8 +4,49 @@ import { User } from "../models/User.js";
 import { Appointment } from "../models/Appointment.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
+const DAYS_MAP = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+
+const parseAvailability = (text) => {
+  const slots = [];
+  const entries = text.split(";").map((e) => e.trim());
+
+  for (let entry of entries) {
+    const [daysPart, timePart] = entry.split(" ");
+    if (!daysPart || !timePart) continue;
+
+    const [startTime, endTime] = timePart.split("-");
+    if (!startTime || !endTime) continue;
+
+    let days = [];
+    if (daysPart.includes("-")) {
+      const [startDay, endDay] = daysPart.split("-");
+      const dayKeys = Object.keys(DAYS_MAP);
+      const startIndex = dayKeys.indexOf(startDay.toLowerCase());
+      const endIndex = dayKeys.indexOf(endDay.toLowerCase());
+      if (startIndex >= 0 && endIndex >= 0 && endIndex >= startIndex) {
+        days = dayKeys.slice(startIndex, endIndex + 1).map((d) => DAYS_MAP[d]);
+      }
+    } else {
+      const day = DAYS_MAP[daysPart.toLowerCase()];
+      if (day) days.push(day);
+    }
+
+    days.forEach((day) => slots.push({ day, startTime, endTime }));
+  }
+
+  return slots;
+};
+
 // create doctor profile
-export const createDocotorProfile = async (req, res, next) => {
+export const createDoctorProfile = async (req, res, next) => {
   try {
     const {
       specialization,
@@ -14,6 +55,7 @@ export const createDocotorProfile = async (req, res, next) => {
       clinicAddress,
       availability,
     } = req.body;
+
     if (
       !specialization ||
       !experience ||
@@ -25,8 +67,13 @@ export const createDocotorProfile = async (req, res, next) => {
     }
 
     const existingProfile = await Doctor.findOne({ user: req.user._id });
-    if (existingProfile) {
+    if (existingProfile)
       return res.status(400).json({ message: "Doctor profile already exists" });
+
+    const structuredAvailability = parseAvailability(availability);
+
+    if (structuredAvailability.length === 0) {
+      return res.status(400).json({ message: "Invalid availability format" });
     }
 
     const newDoctor = new Doctor({
@@ -35,42 +82,23 @@ export const createDocotorProfile = async (req, res, next) => {
       experience,
       consultationFee,
       clinicAddress,
-      availability,
+      availability: structuredAvailability,
     });
 
     await newDoctor.save();
 
-    const doctorUser = await User.findById(req.user._id);
-
-    await sendEmail({
-      to: doctorUser.email,
-      subject: "Profile Created - Pending Approval",
-      html: `
-        <h2>Hi ${doctorUser.name},</h2>
-        <p>Your doctor profile has been created successfully.</p>
-        <p>Status: <b>Pending Approval</b></p>
-        <p>We’ll notify you once it’s approved by the admin.</p>
-      `,
-    });
-
-    await sendEmail({
-      to: process.env.ADMIN_EMAIL,
-      subject: "New Doctor Profile Awaiting Approval",
-      html: `
-        <h2>New Doctor Registration</h2>
-        <p><b>Name:</b> ${doctorUser.name}</p>
-        <p><b>Email:</b> ${doctorUser.email}</p>
-        <p><b>Specialization:</b> ${specialization}</p>
-        <p>Please review and approve/reject this profile in the admin panel.</p>
-      `,
-    });
+    sendEmail({
+      to: req.user.email,
+      subject: "Doctor Profile Created",
+      html: `<p>Your doctor profile is created and pending approval.</p>`,
+    }).catch((err) => console.error("Email failed:", err));
 
     res.status(201).json({
       message: "Doctor profile created successfully",
       doctor: newDoctor,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -303,7 +331,7 @@ export const cancelAppointment = async (req, res, next) => {
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
     });
-    
+
     res
       .status(200)
       .json({ message: "Appointment cancelled successfully", appointment });

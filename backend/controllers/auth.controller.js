@@ -1,12 +1,14 @@
 import { User } from "../models/User.js";
 import { generateToken } from "../utils/token.js";
 import bcrypt from "bcrypt";
+import { Patient } from "../models/Patient.js";
+import { Doctor } from "../models/Doctor.js";
 
 // signup
 export const SignUpUser = async (req, res, next) => {
   try {
-    const { name, email, password, confirmPassword, role } = req.body;
-    if (!name || !email || !password || !confirmPassword || email.length <= 0) {
+    const { name, email, password, confirmPassword, role, phone } = req.body;
+    if (!name || !email || !password || !confirmPassword || !phone) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -99,6 +101,19 @@ export const SignInUser = async (req, res, next) => {
 
     const token = generateToken(user);
 
+    let hasProfile = false;
+    let isApproved = false;
+    if (user.role === "patient") {
+      const profile = await Patient.findOne({ user: user._id });
+      hasProfile = !!profile;
+    } else if (user.role === "doctor") {
+      const profile = await Doctor.findOne({ user: user._id });
+      hasProfile = !!profile;
+      if (profile) {
+        isApproved = profile.isApproved;
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "User signin successfully",
@@ -106,6 +121,8 @@ export const SignInUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        hasProfile,
+        isApproved,
       },
       token,
     });
