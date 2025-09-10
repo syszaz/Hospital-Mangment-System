@@ -18,14 +18,15 @@ const Signup = () => {
     password: "",
     confirmPassword: "",
     role: "",
+    phone: "",
   });
 
   useEffect(() => {
     if (user) {
       if (user.role === "doctor") {
-        navigate("/doctor/dashboard");
+        navigate("/doctor/profile");
       } else if (user.role === "patient") {
-        navigate("/patient/dashboard");
+        navigate("/patient/profile");
       } else {
         navigate("/");
       }
@@ -70,6 +71,13 @@ const Signup = () => {
 
     if (!formData.role) {
       newErrors.role = "Please select a role";
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^((\+92)|0)3[0-5][0-9]{8}$/.test(formData.phone)) {
+      newErrors.phone =
+        "Enter a valid Pakistan phone number (e.g., 03001234567 or +923001234567)";
     }
 
     return newErrors;
@@ -195,6 +203,24 @@ const Signup = () => {
             </div>
             {errors.role && (
               <p className="text-red-500 text-sm mt-1">{errors.role}</p>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
+              <FaUser className="text-gray-400 text-lg mr-2" />
+              <input
+                name="phone"
+                autoComplete="off"
+                type="text"
+                placeholder="Phone Number"
+                className="w-full outline-none text-gray-700"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.phone && (
+              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
             )}
           </div>
 

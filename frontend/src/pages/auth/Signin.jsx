@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { FaLock } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,12 +18,19 @@ const Signin = () => {
 
   useEffect(() => {
     if (user) {
-      if (user.role === "doctor") {
-        navigate("/doctor/dashboard");
-      } else if (user.role === "patient") {
-        navigate("/patient/dashboard");
+      if (!user.hasProfile) {
+        if (user.role === "doctor") {
+          navigate("/doctor/profile");
+        } else if (user.role === "patient") {
+          navigate("/patient/profile");
+        }
       } else {
-        navigate("/");
+        if (user.role === "doctor") {
+          if (!user.isApproved) navigate("/doctor/waiting-approval");
+          else navigate("/doctor/dashboard");
+        } else if (user.role === "patient") {
+          navigate("/patient/dashboard");
+        }
       }
     }
   }, [user, navigate]);
@@ -138,8 +145,7 @@ const Signin = () => {
             disabled={loading}
             className={`w-full cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold shadow-md ${
               loading && "bg-emerald-300"
-            }`}
-          >
+            }`}>
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
@@ -148,8 +154,7 @@ const Signin = () => {
           Don’t have an account?
           <a
             href="/auth/signup"
-            className="text-emerald-500 px-1 font-medium hover:underline"
-          >
+            className="text-emerald-500 px-1 font-medium hover:underline">
             Sign up
           </a>
         </p>

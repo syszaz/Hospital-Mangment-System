@@ -7,6 +7,8 @@ export const signupUser = createAsyncThunk(
     try {
       const response = await api.post("/auth/signup", userData);
       localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
       return response.data;
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -22,6 +24,8 @@ export const signinUser = createAsyncThunk(
     try {
       const response = await api.post("/auth/signin", userData);
       localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
       return response.data;
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -32,7 +36,7 @@ export const signinUser = createAsyncThunk(
 );
 
 const initialState = {
-  user: null,
+  user: JSON.parse(localStorage.getItem("user")) || null,
   token: localStorage.getItem("token") || null,
   loading: false,
   error: null,
