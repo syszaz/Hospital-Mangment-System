@@ -1,225 +1,322 @@
-import React, { useState, useEffect } from "react";
-import {
-  FaUserMd,
-  FaDollarSign,
-  FaMapMarkerAlt,
-  FaCalendarAlt,
-} from "react-icons/fa";
-import { RiStethoscopeLine } from "react-icons/ri";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { createDoctorProfile } from "../../apis/patient";
+import { fetchUserProfileByEmail } from "../../apis/user";
+import { logout } from "../../redux/slices/auth";
 
 const DoctorProfile = () => {
-  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [message, setMessage] = useState(null);
-
-  const [formData, setFormData] = useState({
-    specialization: "",
-    experience: "",
-    consultationFee: "",
-    clinicAddress: "",
-    availability: "",
-  });
-
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [doctorProfile, setDoctorProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      if (user.role === "doctor" && user.hasProfile) {
-        if (user.isApproved) {
-          navigate("/doctor/dashboard");
-        } else {
-          navigate("/doctor/waiting-approval");
+    const loadProfile = async () => {
+      try {
+        if (user?.email) {
+          const profileData = await fetchUserProfileByEmail(user.email);
+          setProfile(profileData.user);
+          setDoctorProfile(profileData.doctorProfile);
         }
+      } catch (err) {
+        setError(err.message || "Failed to fetch profile");
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [user, navigate]);
+    };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      const newErrors = { ...errors };
-      delete newErrors[e.target.name];
-      setErrors(newErrors);
-    }
+    loadProfile();
+  }, [user]);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/auth/login");
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.specialization)
-      newErrors.specialization = "Specialization is required";
-    if (!formData.experience) newErrors.experience = "Experience is required";
-    if (!formData.consultationFee)
-      newErrors.consultationFee = "Consultation fee is required";
-    if (!formData.clinicAddress)
-      newErrors.clinicAddress = "Clinic address is required";
-    if (!formData.availability)
-      newErrors.availability = "Availability is required";
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setLoading(true);
-    setErrors({});
-    try {
-      const response = await createDoctorProfile(formData);
-      setMessage(response.message);
-      navigate("/doctor/waiting-approval");
-    } catch (error) {
-      setMessage(error.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
-        <div className="flex flex-col items-center mb-6">
-          <h2 className="text-3xl font-extrabold text-gray-800 my-0.5">
-            Doctor Profile
-          </h2>
-          <p className="text-gray-500 font-bold">
-            Fill in your details to complete your profile.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg">
+          <div className="animate-pulse flex space-x-4">
+            <div className="w-12 h-12 bg-emerald-200 rounded-full"></div>
+            <div className="flex-1 space-y-3">
+              <div className="h-4 bg-emerald-200 rounded w-3/4"></div>
+              <div className="h-3 bg-emerald-100 rounded w-1/2"></div>
+            </div>
+          </div>
+          <p className="text-emerald-600 mt-4 text-center">
+            Loading your profile...
           </p>
         </div>
+      </div>
+    );
+  }
 
-        {message && (
-          <div
-            className={`${
-              message.toLowerCase().includes("error")
-                ? "bg-red-100 text-red-700 border-red-400"
-                : "bg-green-100 text-green-700 border-green-400"
-            } border rounded p-2 mb-4 text-sm text-center`}>
-            {message}
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg border-l-4 border-red-500">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <div className="w-5 h-5 bg-red-500 rounded"></div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Error Loading Profile
+              </h3>
+              <p className="text-red-600">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+              <div className="w-8 h-8 bg-emerald-500 rounded-lg mr-3"></div>
+              Doctor Profile
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Manage your professional information and settings
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+            Logout
+          </button>
+        </div>
+
+        {profile ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>
+                  Personal Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      Full Name
+                    </label>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {profile.name}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      Email Address
+                    </label>
+                    <p className="text-lg text-gray-700">{profile.email}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      Phone Number
+                    </label>
+                    <p className="text-lg text-gray-700">{profile.phone}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      Role
+                    </label>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 capitalize">
+                      {profile.role}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {doctorProfile && (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded mr-3"></div>
+                    Professional Information
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Specialization
+                      </label>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {doctorProfile.specialization}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Experience
+                      </label>
+                      <p className="text-lg text-gray-700">
+                        {doctorProfile.experience} years
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Consultation Fee
+                      </label>
+                      <p className="text-lg font-semibold text-emerald-600">
+                        Rs {doctorProfile.consultationFee?.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Status
+                      </label>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${
+                          doctorProfile.status === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : doctorProfile.status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                        {doctorProfile.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      Clinic Address
+                    </label>
+                    <p className="text-lg text-gray-700 mt-1">
+                      {doctorProfile.clinicAddress}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {doctorProfile?.availability &&
+                doctorProfile.availability.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-lg border-l-4 border-purple-500 p-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                      <div className="w-6 h-6 bg-purple-500 rounded mr-3"></div>
+                      Availability Schedule
+                    </h2>
+                    <div className="grid gap-4">
+                      {doctorProfile.availability.map((slot, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                            <span className="font-medium text-gray-800">
+                              {slot.day}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-gray-700">
+                              {slot.startTime} - {slot.endTime}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Max {slot.maxPatientsPerDay} patients
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+                <div className="w-20 h-20 bg-emerald-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <div className="w-12 h-12 bg-emerald-500 rounded-full"></div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  Dr. {profile.name}
+                </h3>
+                {doctorProfile && (
+                  <>
+                    <p className="text-gray-600 mb-4">
+                      {doctorProfile.specialization}
+                    </p>
+                    <div className="flex justify-center space-x-4 text-sm">
+                      <div className="text-center">
+                        <p className="font-bold text-emerald-600">
+                          {doctorProfile.experience}
+                        </p>
+                        <p className="text-gray-500">Years Exp.</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-emerald-600">
+                          Rs {doctorProfile.consultationFee}
+                        </p>
+                        <p className="text-gray-500">Fee</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                  Account Status
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Profile Status</span>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        doctorProfile?.isApproved
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}>
+                      {doctorProfile?.isApproved ? "Approved" : "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Account Type</span>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
+                      Doctor
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Member Since</span>
+                    <span className="text-sm text-gray-700">
+                      {new Date(profile.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {doctorProfile?.daysOff && doctorProfile.daysOff.length > 0 && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">
+                    Days Off
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {doctorProfile.daysOff.map((day, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                        {day}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              No Profile Found
+            </h3>
+            <p className="text-gray-600">
+              Unable to load your profile information.
+            </p>
           </div>
         )}
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              {" "}
-              Specialization{" "}
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <RiStethoscopeLine className="text-gray-400 text-lg mr-2" />
-              <input
-                type="text"
-                name="specialization"
-                placeholder="Specialization"
-                value={formData.specialization}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-          </div>
-          {errors.specialization && (
-            <p className="text-red-500 text-sm">{errors.specialization}</p>
-          )}
-
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              {" "}
-              Experience (years){" "}
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaCalendarAlt className="text-gray-400 text-lg mr-2" />
-              <input
-                type="number"
-                name="experience"
-                placeholder="Experience (years)"
-                value={formData.experience}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-          </div>
-          {errors.experience && (
-            <p className="text-red-500 text-sm">{errors.experience}</p>
-          )}
-
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              {" "}
-              Consultation Fee (Rs.){" "}
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaDollarSign className="text-gray-400 text-lg mr-2" />
-              <input
-                type="number"
-                name="consultationFee"
-                placeholder="Consultation Fee"
-                value={formData.consultationFee}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-          </div>
-          {errors.consultationFee && (
-            <p className="text-red-500 text-sm">{errors.consultationFee}</p>
-          )}
-
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              {" "}
-              Clinic Address{" "}
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaMapMarkerAlt className="text-gray-400 text-lg mr-2" />
-              <input
-                type="text"
-                name="clinicAddress"
-                placeholder="Clinic Address"
-                value={formData.clinicAddress}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-          </div>
-          {errors.clinicAddress && (
-            <p className="text-red-500 text-sm">{errors.clinicAddress}</p>
-          )}
-
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              {" "}
-              Availability{" "}
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaCalendarAlt className="text-gray-400 text-lg mr-2" />
-              <input
-                type="text"
-                name="availability"
-                placeholder="Availability (e.g., Mon-Fri 10am-4pm)"
-                value={formData.availability}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-          </div>
-          {errors.availability && (
-            <p className="text-red-500 text-sm">{errors.availability}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold shadow-md ${
-              loading && "bg-emerald-300"
-            }`}>
-            {loading ? "Submitting..." : "Submit Profile"}
-          </button>
-        </form>
       </div>
     </div>
   );

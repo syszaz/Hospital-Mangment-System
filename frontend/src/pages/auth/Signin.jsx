@@ -2,7 +2,7 @@ import React, { use, useEffect, useState } from "react";
 import { FaLock } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signinUser } from "../../redux/slices/auth";
 
 const Signin = () => {
@@ -20,14 +20,13 @@ const Signin = () => {
     if (user) {
       if (!user.hasProfile) {
         if (user.role === "doctor") {
-          navigate("/doctor/profile");
+          navigate("/doctor/create-profile");
         } else if (user.role === "patient") {
-          navigate("/patient/profile");
+          navigate("/patient/create-profile");
         }
       } else {
         if (user.role === "doctor") {
-          if (!user.isApproved) navigate("/doctor/waiting-approval");
-          else navigate("/doctor/dashboard");
+          navigate("/doctor/dashboard");
         } else if (user.role === "patient") {
           navigate("/patient/dashboard");
         }
@@ -152,11 +151,11 @@ const Signin = () => {
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Don’t have an account?
-          <a
-            href="/auth/signup"
+          <Link
+            to="/auth/signup"
             className="text-emerald-500 px-1 font-medium hover:underline">
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </div>

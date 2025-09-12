@@ -84,7 +84,7 @@ export const bookAppointment = async (req, res, next) => {
       })
       .populate("patient", "name email");
 
-    await sendEmail({
+    sendEmail({
       to: newAppointment.patient.email,
       subject: "Your Appointment Request is Pending",
       html: `
@@ -100,6 +100,12 @@ export const bookAppointment = async (req, res, next) => {
         <p>We will notify you once the doctor confirms your appointment.</p>
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
+    })
+    .then(() => {
+      console.log("Appointment email sent successfully");
+    })
+    .catch((error) => {
+      console.error("Error sending appointment email:", error);
     });
 
     res.status(201).json({

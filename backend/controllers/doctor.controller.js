@@ -14,6 +14,16 @@ const DAYS_MAP = {
   sun: "Sunday",
 };
 
+const ALL_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
 const parseAvailability = (text) => {
   const slots = [];
   const entries = text.split(";").map((e) => e.trim());
@@ -67,14 +77,19 @@ export const createDoctorProfile = async (req, res, next) => {
     }
 
     const existingProfile = await Doctor.findOne({ user: req.user._id });
-    if (existingProfile)
+    if (existingProfile) {
       return res.status(400).json({ message: "Doctor profile already exists" });
+    }
 
     const structuredAvailability = parseAvailability(availability);
 
     if (structuredAvailability.length === 0) {
       return res.status(400).json({ message: "Invalid availability format" });
     }
+
+    // calculate daysOff
+    const selectedDays = structuredAvailability.map((slot) => slot.day);
+    const daysOff = ALL_DAYS.filter((d) => !selectedDays.includes(d));
 
     const newDoctor = new Doctor({
       user: req.user._id,
@@ -83,6 +98,7 @@ export const createDoctorProfile = async (req, res, next) => {
       consultationFee,
       clinicAddress,
       availability: structuredAvailability,
+      daysOff,
     });
 
     await newDoctor.save();
@@ -267,7 +283,13 @@ export const getAvailableSeatsForDoctor = async (req, res, next) => {
 export const approveAppointment = async (req, res, next) => {
   try {
     const appointmentId = req.params.id;
-    const appointment = await Appointment.findById(appointmentId);
+    const appointment = await Appointment.findById(appointmentId)
+      .populate("patient", "name email")
+      .populate({
+        path: "doctor",
+        populate: { path: "user", select: "name email" },
+      });
+
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
     }
@@ -279,7 +301,7 @@ export const approveAppointment = async (req, res, next) => {
     appointment.status = "confirmed";
     await appointment.save();
 
-    await sendEmail({
+    sendEmail({
       to: appointment.patient.email,
       subject: "Your Appointment is Confirmed",
       html: `
@@ -292,7 +314,13 @@ export const approveAppointment = async (req, res, next) => {
         <p>Please make sure to arrive on time.</p>
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
-    });
+    })
+      .then(() => {
+        console.log("Confirmation email sent successfully");
+      })
+      .catch((err) => {
+        console.error("Failed to send confirmation email:", err);
+      });
 
     res
       .status(200)
@@ -335,6 +363,143 @@ export const cancelAppointment = async (req, res, next) => {
     res
       .status(200)
       .json({ message: "Appointment cancelled successfully", appointment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// appointments for today
+export const getTodaysAppointments = async (req, res, next) => {
+  try {
+    const doctorId = req.user._id;
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfDay = moment().endOf("day").toDate();
+
+    const doctor = await Doctor.findOne({ user: req.user._id });
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    const appointments = await Appointment.find({
+      doctor: doctor._id,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ["pending", "confirmed"] },
+    })
+      .populate("patient", "name email")
+      .sort({ startTime: 1 });
+
+    const approvedAppointments = appointments.filter(
+      (appt) => appt.status === "confirmed"
+    );
+    const pendingAppointments = appointments.filter(
+      (appt) => appt.status === "pending"
+    );
+
+    res.status(200).json({
+      message: "Today's appointments fetched successfully",
+      appointments,
+      approvedAppointments,
+      pendingAppointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// upcoming week appointments
+export const getUpcomingWeekAppointments = async (req, res, next) => {
+  try {
+    const doctorProfile = await Doctor.findOne({ user: req.user._id });
+    if (!doctorProfile) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfWeek = moment().endOf("week").endOf("day").toDate();
+
+    const appointments = await Appointment.find({
+      doctor: doctorProfile._id,
+      date: { $gte: startOfDay, $lte: endOfWeek },
+      status: { $in: ["pending", "confirmed"] },
+    })
+      .populate("patient", "name email")
+      .sort({ date: 1, startTime: 1 });
+
+    const approvedAppointments = appointments.filter(
+      (appt) => appt.status === "confirmed"
+    );
+    const pendingAppointments = appointments.filter(
+      (appt) => appt.status === "pending"
+    );
+
+    res.status(200).json({
+      message: "Upcoming week appointments fetched successfully",
+      appointments,
+      approvedAppointments,
+      pendingAppointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// revenue estimate for the doctor for today
+export const getTodaysRevenueEstimate = async (req, res, next) => {
+  try {
+    const doctorProfile = await Doctor.findOne({ user: req.user._id });
+    if (!doctorProfile) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfDay = moment().endOf("day").toDate();
+
+    const appointments = await Appointment.find({
+      doctor: doctorProfile._id,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: "confirmed",
+    });
+
+    const totalRevenue = appointments.reduce(
+      (sum, appt) => sum + doctorProfile.consultationFee,
+      0
+    );
+
+    res.status(200).json({
+      message: "Today's revenue estimate fetched successfully",
+      totalRevenue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// revenue for this week
+export const revenueForThisWeek = async (req, res, next) => {
+  try {
+    const doctorProfile = await Doctor.findOne({ user: req.user._id });
+    if (!doctorProfile) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    const startOfDay = moment().startOf("day").toDate();
+    const endOfWeek = moment().endOf("week").endOf("day").toDate();
+
+    const appointments = await Appointment.find({
+      doctor: doctorProfile._id,
+      date: { $gte: startOfDay, $lte: endOfWeek },
+      status: "confirmed",
+    });
+
+    const totalRevenue = appointments.reduce(
+      (sum, appt) => sum + doctorProfile.consultationFee,
+      0
+    );
+
+    res.status(200).json({
+      message: "this week's revenue estimate fetched successfully",
+      totalRevenue,
+    });
   } catch (error) {
     next(error);
   }

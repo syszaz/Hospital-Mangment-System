@@ -22,7 +22,7 @@ const availabilitySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  maxPatientsPerDay: { type: Number, default: 20 },
+  maxPatientsPerDay: { type: Number, default: 10 },
 });
 
 const doctorSchema = new mongoose.Schema(
@@ -52,7 +52,21 @@ const doctorSchema = new mongoose.Schema(
       required: true,
     },
     availability: [availabilitySchema],
-    daysOff: [{ type: Date }],
+    daysOff: [
+      {
+        type: String,
+        enum: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+        ],
+      },
+    ],
+
     isApproved: {
       type: Boolean,
       default: false,

@@ -4,7 +4,7 @@ import { MdEmail } from "react-icons/md";
 import { RiUserSettingsFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { signupUser } from "../../redux/slices/auth";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const dispatch = useDispatch();
@@ -24,9 +24,9 @@ const Signup = () => {
   useEffect(() => {
     if (user) {
       if (user.role === "doctor") {
-        navigate("/doctor/profile");
+        navigate("/doctor/create-profile");
       } else if (user.role === "patient") {
-        navigate("/patient/profile");
+        navigate("/patient/create-profile");
       } else {
         navigate("/");
       }
@@ -236,11 +236,11 @@ const Signup = () => {
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Already have an account?
-          <a
-            href="/auth/signin"
+          <Link
+            to="/auth/signin"
             className="text-emerald-500 px-1 font-medium hover:underline">
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>

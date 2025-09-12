@@ -1,3 +1,4 @@
+import { Doctor } from "../models/Doctor.js";
 import { User } from "../models/User.js";
 
 // update user
@@ -39,20 +40,34 @@ export const updateUser = async (req, res, next) => {
 };
 
 // profile
-export const userProfile = async (req, res, next) => {
+export const userProfileByEmail = async (req, res, next) => {
   try {
-    const id = req.params.id;
-    if (!id) {
-      return res.status(400).json({ message: "User ID is required" });
+    const email = req.params.email;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await User.findById(id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findOne({ email }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    let doctorProfile = null;
+
+    if (user.role === "doctor") {
+      doctorProfile = await Doctor.findOne({ user: user._id }).populate(
+        "user",
+        "-password"
+      );
+    }
 
     res.status(200).json({
       success: true,
       message: "User profile fetched successfully",
       user,
+      doctorProfile: doctorProfile || null,
     });
   } catch (error) {
     next(error);

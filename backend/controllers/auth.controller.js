@@ -122,9 +122,43 @@ export const SignInUser = async (req, res, next) => {
         email: user.email,
         role: user.role,
         hasProfile,
-        isApproved,
+        ...(user.role === "doctor" && { isApproved }),
       },
       token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// get user
+export const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    let hasProfile = false;
+    let isApproved = false;
+
+    if (user.role === "patient") {
+      const profile = await Patient.findOne({ user: user._id });
+      hasProfile = !!profile;
+    } else if (user.role === "doctor") {
+      const profile = await Doctor.findOne({ user: user._id });
+      hasProfile = !!profile;
+      if (profile) {
+        isApproved = profile.isApproved;
+      }
+    }
+
+    res.status(200).json({
+      user: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasProfile,
+        ...(user.role === "doctor" && { isApproved }),
+      },
     });
   } catch (error) {
     next(error);

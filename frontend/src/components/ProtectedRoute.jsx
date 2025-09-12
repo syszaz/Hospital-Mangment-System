@@ -12,15 +12,6 @@ const ProtectedRoute = ({ role }) => {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  if (role === "doctor") {
-    if (!user.hasProfile) {
-      return <Navigate to="/doctor/profile" replace />;
-    }
-    if (!user.isApproved === "approved") {
-      return <Navigate to="/doctor/waiting-approval" replace />;
-    }
-  }
-
   return <Outlet />;
 };
 
