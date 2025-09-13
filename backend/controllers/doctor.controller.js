@@ -87,7 +87,6 @@ export const createDoctorProfile = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid availability format" });
     }
 
-    // calculate daysOff
     const selectedDays = structuredAvailability.map((slot) => slot.day);
     const daysOff = ALL_DAYS.filter((d) => !selectedDays.includes(d));
 
@@ -123,15 +122,19 @@ export const updateDoctorProfile = async (req, res, next) => {
   try {
     const doctorId = req.params.id;
     const updates = req.body;
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    if (doctor.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized action" });
+    }
+
     const updatedDoctor = await Doctor.findByIdAndUpdate(doctorId, updates, {
       new: true,
     });
-    if (!updatedDoctor) {
-      return res.status(404).json({ message: "Doctor profile not found" });
-    }
-    if (doctorId !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized action" });
-    }
 
     res.status(200).json({
       message: "Doctor profile updated successfully",
@@ -442,6 +445,43 @@ export const getUpcomingWeekAppointments = async (req, res, next) => {
     next(error);
   }
 };
+
+// get monthly appointments
+export const getMonthlyAppointments = async (req, res, next) => {
+  try {
+    const doctorProfile = await Doctor.findOne({ user: req.user._id });
+    if (!doctorProfile) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    const startOfMonth = moment().startOf("month").toDate();
+    const endOfMonth = moment().endOf("month").endOf("day").toDate();
+
+    const appointments = await Appointment.find({
+      doctor: doctorProfile._id,
+      date: { $gte: startOfMonth, $lte: endOfMonth },
+      status: { $in: ["pending", "confirmed"] },
+    })
+      .populate("patient", "name email")
+      .sort({ date: 1, startTime: 1 });
+
+    const approvedAppointments = appointments.filter(
+      (appt) => appt.status === "confirmed"
+    );
+    const pendingAppointments = appointments.filter(
+      (appt) => appt.status === "pending"
+    );
+
+    res.status(200).json({
+      message: "Monthly appointments fetched successfully",
+      appointments,
+      approvedAppointments,
+      pendingAppointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};  
 
 // revenue estimate for the doctor for today
 export const getTodaysRevenueEstimate = async (req, res, next) => {

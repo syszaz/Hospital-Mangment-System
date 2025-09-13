@@ -39,37 +39,23 @@ export const updateUser = async (req, res, next) => {
   }
 };
 
-// profile
+// profile by email
 export const userProfileByEmail = async (req, res, next) => {
   try {
-    const email = req.params.email;
-
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
-
-    const user = await User.findOne({ email }).select("-password");
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const user = await User.findOne({ email: req.params.email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     let doctorProfile = null;
-
     if (user.role === "doctor") {
-      doctorProfile = await Doctor.findOne({ user: user._id }).populate(
-        "user",
-        "-password"
-      );
+      doctorProfile = await Doctor.findOne({ user: user._id });
     }
 
     res.status(200).json({
-      success: true,
-      message: "User profile fetched successfully",
       user,
-      doctorProfile: doctorProfile || null,
+      ...(doctorProfile && { doctorProfile }),
     });
   } catch (error) {
     next(error);
   }
 };
+

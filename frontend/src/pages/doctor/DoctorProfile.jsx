@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchUserProfileByEmail } from "../../apis/user";
+import { fetchUserProfileByEmail, updatePersonalInfo } from "../../apis/user";
 import { logout } from "../../redux/slices/auth";
+import { updateProfessionalInfo } from "../../apis/doctor";
 
 const DoctorProfile = () => {
   const { user } = useSelector((state) => state.auth);
@@ -10,8 +11,89 @@ const DoctorProfile = () => {
   const [doctorProfile, setDoctorProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [personalForm, setPersonalForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+  });
+  const [isEditingProfessional, setIsEditingProfessional] = useState(false);
+  const [professionalForm, setProfessionalForm] = useState({
+    specialization: "",
+    experience: "",
+    consultationFee: "",
+    clinicAddress: "",
+    daysOff: [],
+  });
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const editingPersonalInfo = () => {
+    setPersonalForm({
+      name: profile.name,
+      email: profile.email,
+      phone: profile.phone,
+      role: profile.role,
+    });
+    setIsEditingPersonal(true);
+  };
+
+  const handlePersonalChange = (e) => {
+    setPersonalForm({
+      ...personalForm,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSavePersonal = async () => {
+    try {
+      const updated = await updatePersonalInfo(profile._id, personalForm);
+      setProfile(updated.user);
+      setIsEditingPersonal(false);
+    } catch (err) {
+      setError(err.message || "failed to update personal profile info");
+    }
+  };
+
+  const editingProfessionalInfo = () => {
+    setProfessionalForm({
+      specialization: doctorProfile.specialization,
+      experience: doctorProfile.experience,
+      consultationFee: doctorProfile.consultationFee,
+      clinicAddress: doctorProfile.clinicAddress,
+      daysOff: doctorProfile.daysOff || [],
+    });
+    setIsEditingProfessional(true);
+  };
+
+  const handleProfessionalChange = (e) => {
+    setProfessionalForm({
+      ...professionalForm,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleDaysOffChange = (day) => {
+    const newDaysOff = professionalForm.daysOff.includes(day)
+      ? professionalForm.daysOff.filter((d) => d !== day)
+      : [...professionalForm.daysOff, day];
+
+    setProfessionalForm({ ...professionalForm, daysOff: newDaysOff });
+  };
+
+  const handleSaveProfessional = async () => {
+    try {
+      const updated = await updateProfessionalInfo(
+        doctorProfile._id,
+        professionalForm
+      );
+      setDoctorProfile(updated.doctor);
+      setIsEditingProfessional(false);
+    } catch (err) {
+      setError(err.message || "failed to update professional profile info");
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -98,132 +180,262 @@ const DoctorProfile = () => {
         {profile ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>
-                  Personal Information
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                      Full Name
-                    </label>
-                    <p className="text-lg font-semibold text-gray-800">
-                      {profile.name}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                      Email Address
-                    </label>
-                    <p className="text-lg text-gray-700">{profile.email}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                      Phone Number
-                    </label>
-                    <p className="text-lg text-gray-700">{profile.phone}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                      Role
-                    </label>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 capitalize">
-                      {profile.role}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {doctorProfile && (
-                <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+              {!isEditingPersonal ? (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
                   <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                    <div className="w-6 h-6 bg-blue-500 rounded mr-3"></div>
-                    Professional Information
+                    <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>
+                    Personal Information
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                        Specialization
+                        Full Name
                       </label>
                       <p className="text-lg font-semibold text-gray-800">
-                        {doctorProfile.specialization}
+                        {profile.name}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                        Experience
+                        Email Address
                       </label>
-                      <p className="text-lg text-gray-700">
-                        {doctorProfile.experience} years
-                      </p>
+                      <p className="text-lg text-gray-700">{profile.email}</p>
                     </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                        Consultation Fee
+                        Phone Number
                       </label>
-                      <p className="text-lg font-semibold text-emerald-600">
-                        Rs {doctorProfile.consultationFee?.toLocaleString()}
-                      </p>
+                      <p className="text-lg text-gray-700">{profile.phone}</p>
                     </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                        Status
+                        Role
                       </label>
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${
-                          doctorProfile.status === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : doctorProfile.status === "rejected"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                        {doctorProfile.status}
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 capitalize">
+                        {profile.role}
                       </span>
                     </div>
                   </div>
-                  <div className="mt-6">
-                    <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                      Clinic Address
-                    </label>
-                    <p className="text-lg text-gray-700 mt-1">
-                      {doctorProfile.clinicAddress}
-                    </p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>
+                    Edit Personal Information
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={personalForm.name}
+                        onChange={handlePersonalChange}
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={personalForm.email}
+                        onChange={handlePersonalChange}
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={personalForm.phone}
+                        onChange={handlePersonalChange}
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        Role
+                      </label>
+                      <input
+                        type="text"
+                        name="role"
+                        value={personalForm.role}
+                        readOnly
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg bg-gray-100 text-gray-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-4 mt-6">
+                    <button
+                      onClick={handleSavePersonal}
+                      className="bg-emerald-600 hover:bg-emerald-500 cursor-pointer text-white px-4 py-2 rounded-lg font-medium transition">
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditingPersonal(false)}
+                      className="bg-gray-200 hover:bg-gray-300 cursor-pointer text-gray-800 px-4 py-2 rounded-lg font-medium transition">
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}
 
-              {doctorProfile?.availability &&
-                doctorProfile.availability.length > 0 && (
-                  <div className="bg-white rounded-xl shadow-lg border-l-4 border-purple-500 p-6">
-                    <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                      <div className="w-6 h-6 bg-purple-500 rounded mr-3"></div>
-                      Availability Schedule
-                    </h2>
-                    <div className="grid gap-4">
-                      {doctorProfile.availability.map((slot, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                            <span className="font-medium text-gray-800">
-                              {slot.day}
+              <div>
+                {!isEditingProfessional ? (
+                  <div>
+                    {doctorProfile && (
+                      <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+                        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                          <div className="w-6 h-6 bg-blue-500 rounded mr-3"></div>
+                          Professional Information
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                              Specialization
+                            </label>
+                            <p className="text-lg font-semibold text-gray-800">
+                              {doctorProfile.specialization}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                              Experience
+                            </label>
+                            <p className="text-lg text-gray-700">
+                              {doctorProfile.experience} years
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                              Consultation Fee
+                            </label>
+                            <p className="text-lg font-semibold text-emerald-600">
+                              Rs{" "}
+                              {doctorProfile.consultationFee?.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                              Status
+                            </label>
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${
+                                doctorProfile.status === "approved"
+                                  ? "bg-green-100 text-green-800"
+                                  : doctorProfile.status === "rejected"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}>
+                              {doctorProfile.status}
                             </span>
                           </div>
-                          <div className="text-right">
-                            <p className="text-gray-700">
-                              {slot.startTime} - {slot.endTime}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Max {slot.maxPatientsPerDay} patients
-                            </p>
-                          </div>
                         </div>
+                        <div className="mt-6">
+                          <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                            Clinic Address
+                          </label>
+                          <p className="text-lg text-gray-700 mt-1">
+                            {doctorProfile.clinicAddress}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">
+                      Edit Professional Info
+                    </h2>
+
+                    {/* Specialization */}
+                    <input
+                      type="text"
+                      name="specialization"
+                      value={professionalForm.specialization}
+                      onChange={handleProfessionalChange}
+                      className="w-full mb-4 px-3 py-2 border rounded-lg"
+                      placeholder="Specialization"
+                    />
+
+                    {/* Experience */}
+                    <input
+                      type="number"
+                      name="experience"
+                      value={professionalForm.experience}
+                      onChange={handleProfessionalChange}
+                      className="w-full mb-4 px-3 py-2 border rounded-lg"
+                      placeholder="Experience in years"
+                    />
+
+                    {/* Consultation Fee */}
+                    <input
+                      type="number"
+                      name="consultationFee"
+                      value={professionalForm.consultationFee}
+                      onChange={handleProfessionalChange}
+                      className="w-full mb-4 px-3 py-2 border rounded-lg"
+                      placeholder="Consultation Fee"
+                    />
+
+                    {/* Clinic Address */}
+                    <textarea
+                      name="clinicAddress"
+                      value={professionalForm.clinicAddress}
+                      onChange={handleProfessionalChange}
+                      className="w-full mb-4 px-3 py-2 border rounded-lg"
+                      placeholder="Clinic Address"
+                    />
+
+                    <div className="mb-4">
+                      <h4 className="font-semibold mb-2">Days Off</h4>
+                      {[
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                      ].map((day) => (
+                        <label
+                          key={day}
+                          className="inline-flex items-center mr-3">
+                          <input
+                            type="checkbox"
+                            checked={professionalForm.daysOff.includes(day)}
+                            onChange={() => handleDaysOffChange(day)}
+                            className="mr-2"
+                          />
+                          {day}
+                        </label>
                       ))}
+                    </div>
+
+                    <div className="flex space-x-4 mt-6">
+                      <button
+                        onClick={handleSaveProfessional}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg">
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setIsEditingProfessional(false)}
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg">
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 )}
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -285,6 +497,19 @@ const DoctorProfile = () => {
                       {new Date(profile.createdAt).toLocaleDateString()}
                     </span>
                   </div>
+                </div>
+
+                <div className="space-y-2 mt-6">
+                  <button
+                    onClick={() => editingPersonalInfo()}
+                    className="px-3 py-2 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white rounded-md">
+                    Edit Personal Info
+                  </button>
+                  <button
+                    onClick={() => editingProfessionalInfo()}
+                    className="px-3 py-2 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white rounded-md">
+                    Edit Professional Info
+                  </button>
                 </div>
               </div>
 

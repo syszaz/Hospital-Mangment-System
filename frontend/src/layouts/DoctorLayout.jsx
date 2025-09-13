@@ -98,7 +98,7 @@ const DoctorLayout = () => {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-opacity-30">
+        <div className="absolute bottom-0 left-0 right-0 p-6 border-opacity-30 w-fit">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
               <div className="w-6 h-6 bg-white bg-opacity-60 rounded-full"></div>
