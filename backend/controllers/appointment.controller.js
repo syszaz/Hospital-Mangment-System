@@ -2,6 +2,7 @@ import moment from "moment";
 import { Doctor } from "../models/Doctor.js";
 import { Appointment } from "../models/Appointment.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import mongoose from "mongoose";
 
 // book an appointment with a doctor
 export const bookAppointment = async (req, res, next) => {
@@ -101,12 +102,12 @@ export const bookAppointment = async (req, res, next) => {
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
     })
-    .then(() => {
-      console.log("Appointment email sent successfully");
-    })
-    .catch((error) => {
-      console.error("Error sending appointment email:", error);
-    });
+      .then(() => {
+        console.log("Appointment email sent successfully");
+      })
+      .catch((error) => {
+        console.error("Error sending appointment email:", error);
+      });
 
     res.status(201).json({
       success: true,
@@ -238,6 +239,44 @@ export const deleteAppointment = async (req, res, next) => {
     res
       .status(200)
       .json({ success: true, message: "Appointment deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// get all Appointments
+export const getAllAppointments = async (req, res, next) => {
+  try {
+    const doctorID = req.params.id;
+    const { status } = req.query;
+    if (!doctorID) {
+      return res.status(400).json({ message: "Doctor ID is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(doctorID)) {
+      return res.status(400).json({ message: "Invalid doctor ID format" });
+    }
+
+    const doctor = await Doctor.findById(doctorID);
+    if (!doctor) {
+      return res.status(400).json({ message: "Doctor not found" });
+    }
+
+    const query = { doctor: doctorID };
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    const appointments = await Appointment.find(query).populate("patient");
+    if (!appointments || appointments.lenght <= 0) {
+      return res.status(404).json({ message: "No appointments found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `${query?.status || "all"} appintments fetched succeessful`,
+      appointments,
+    });
   } catch (error) {
     next(error);
   }
