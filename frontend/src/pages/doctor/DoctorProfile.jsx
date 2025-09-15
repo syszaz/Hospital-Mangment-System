@@ -8,7 +8,6 @@ import { updateProfessionalInfo } from "../../apis/doctor";
 const DoctorProfile = () => {
   const { user } = useSelector((state) => state.auth);
   const [profile, setProfile] = useState(null);
-  const [doctorProfile, setDoctorProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -28,6 +27,7 @@ const DoctorProfile = () => {
   });
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const doctorProfile = useSelector((state) => state.doctorProfile.profile);
 
   const editingPersonalInfo = () => {
     setPersonalForm({
@@ -88,7 +88,6 @@ const DoctorProfile = () => {
         doctorProfile._id,
         professionalForm
       );
-      setDoctorProfile(updated.doctor);
       setIsEditingProfessional(false);
     } catch (err) {
       setError(err.message || "failed to update professional profile info");
@@ -101,7 +100,6 @@ const DoctorProfile = () => {
         if (user?.email) {
           const profileData = await fetchUserProfileByEmail(user.email);
           setProfile(profileData.user);
-          setDoctorProfile(profileData.doctorProfile);
         }
       } catch (err) {
         setError(err.message || "Failed to fetch profile");

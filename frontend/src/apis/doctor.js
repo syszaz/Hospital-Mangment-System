@@ -74,7 +74,10 @@ export const thisWeekRevenue = async () => {
 
 export const updateProfessionalInfo = async (id, professionalForm) => {
   try {
-    const { data } = await api.put(`/doctor/profile/update/${id}`, professionalForm);
+    const { data } = await api.put(
+      `/doctor/profile/update/${id}`,
+      professionalForm
+    );
     return data;
   } catch (error) {
     const backendMessage =
@@ -82,5 +85,20 @@ export const updateProfessionalInfo = async (id, professionalForm) => {
       error?.message ||
       "Error fetching today's revenue";
     throw new Error(backendMessage);
+  }
+};
+
+export const allAppointments = async (id, status="all") => {
+  try {
+    const { data } = await api.get(`/appointment/appointments/all/${id}?status=${status}`);
+    console.log(data);
+    return data;
+  } catch (error) {
+    const banckendMesssage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error fetching all appointments";
+
+    throw new Error(banckendMesssage);
   }
 };

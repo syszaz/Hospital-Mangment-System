@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { fetchUserProfileByEmail } from "../../apis/user";
 import { updateProfessionalInfo } from "../../apis/doctor";
 
 const DoctorAvailability = () => {
-  const { user } = useSelector((state) => state.auth);
-  const [doctorProfile, setDoctorProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const doctorProfile = useSelector((state) => state.doctorProfile.profile);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [availabilityForm, setAvailabilityForm] = useState({
@@ -191,48 +188,12 @@ const DoctorAvailability = () => {
         updateData
       );
 
-      setDoctorProfile(updated.doctor);
       setIsEditing(false);
     } catch (err) {
       setError(err.message || "Failed to update availability info");
     }
   };
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        if (user?.email) {
-          const profileData = await fetchUserProfileByEmail(user.email);
-          setDoctorProfile(profileData.doctorProfile);
-        }
-      } catch (err) {
-        setError(err.message || "Failed to fetch profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [user]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg">
-          <div className="animate-pulse flex space-x-4">
-            <div className="w-12 h-12 bg-emerald-200 rounded-full"></div>
-            <div className="flex-1 space-y-3">
-              <div className="h-4 bg-emerald-200 rounded w-3/4"></div>
-              <div className="h-3 bg-emerald-100 rounded w-1/2"></div>
-            </div>
-          </div>
-          <p className="text-emerald-600 mt-4 text-center">
-            Loading availability...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (

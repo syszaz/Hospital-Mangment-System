@@ -1,5 +1,5 @@
-import React from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Signup from "./pages/auth/Signup";
 import Signin from "./pages/auth/Signin";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -14,9 +14,29 @@ import DoctorAppointments from "./pages/doctor/DoctorAppointments";
 import DoctorPatients from "./pages/doctor/DoctorPatients";
 import DoctorAvailability from "./pages/doctor/DoctorAvailability";
 import PatientCreateProfile from "./pages/patient/PatientCreateProfile";
+import { setDoctorProfile } from "./redux/slices/doctorProfile";
+import { fetchUserProfileByEmail } from "./apis/user";
 
 const App = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const loadDoctorProfile = async () => {
+      if (user?.role === "doctor" && user?.email) {
+        try {
+          const profileData = await fetchUserProfileByEmail(user.email);
+          if (profileData?.doctorProfile) {
+            dispatch(setDoctorProfile(profileData.doctorProfile));
+          }
+        } catch (err) {
+          console.error("Error loading doctor profile:", err);
+        }
+      }
+    };
+
+    loadDoctorProfile();
+  }, [user, dispatch]);
 
   return (
     <Routes>
