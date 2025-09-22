@@ -15,7 +15,13 @@ import DoctorPatients from "./pages/doctor/DoctorPatients";
 import DoctorAvailability from "./pages/doctor/DoctorAvailability";
 import PatientCreateProfile from "./pages/patient/PatientCreateProfile";
 import { setDoctorProfile } from "./redux/slices/doctorProfile";
+import { setPatientProfile } from "./redux/slices/patientProfile";
 import { fetchUserProfileByEmail } from "./apis/user";
+import PatientDetails from "./pages/doctor/PatientDetails";
+import PatientLayout from "./layouts/PatientLayout";
+import PatientProfile from "./pages/patient/PatientProfile";
+import PatientAppointments from "./pages/patient/PatientAppointments";
+import PatientFindDoctors from "./pages/patient/PatientFindDoctors";
 
 const App = () => {
   const { user, token } = useSelector((state) => state.auth);
@@ -28,6 +34,9 @@ const App = () => {
           const profileData = await fetchUserProfileByEmail(user.email);
           if (profileData?.doctorProfile) {
             dispatch(setDoctorProfile(profileData.doctorProfile));
+          }
+          if (profileData?.patientProfile) {
+            dispatch(setPatientProfile(profileData.patientProfile));
           }
         } catch (err) {
           console.error("Error loading doctor profile:", err);
@@ -52,17 +61,29 @@ const App = () => {
           <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
           <Route path="/doctor/appointments" element={<DoctorAppointments />} />
           <Route path="/doctor/patients" element={<DoctorPatients />} />
+          <Route path="/doctor/patients/:id" element={<PatientDetails />} />
           <Route path="/doctor/availability" element={<DoctorAvailability />} />
           <Route path="/doctor/profile" element={<DoctorProfile />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute role="patient" />}>
-        <Route path="/patient/dashboard" element={<PatientDashboard />} />
         <Route
           path="/patient/create-profile"
           element={<PatientCreateProfile />}
         />
+        <Route element={<PatientLayout />}>
+          <Route path="/patient/dashboard" element={<PatientDashboard />} />
+          <Route
+            path="/patient/appointments"
+            element={<PatientAppointments />}
+          />
+          <Route
+            path="/patient/find-doctors"
+            element={<PatientFindDoctors />}
+          />
+          <Route path="/patient/profile" element={<PatientProfile />} />
+        </Route>
       </Route>
 
       <Route element={<ProtectedRoute role="admin" />}>

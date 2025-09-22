@@ -5,7 +5,7 @@ import {
   getComingWeekAppointments,
   todayREvenue,
   thisWeekRevenue,
-} from "../../apis/doctor";
+} from "../../apis/appointment";
 import { getMe } from "../../apis/auth";
 import { setUser } from "../../redux/slices/auth";
 
@@ -131,7 +131,6 @@ const DoctorDashboard = () => {
             </div>
           </div>
 
-          {/* for today */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
               <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>
@@ -191,7 +190,6 @@ const DoctorDashboard = () => {
             </div>
           </div>
 
-          {/* Weekly */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
               <div className="w-6 h-6 bg-emerald-600 rounded mr-3"></div>
@@ -251,7 +249,6 @@ const DoctorDashboard = () => {
             </div>
           </div>
 
-          {/* Revenue */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
               <div className="w-6 h-6 bg-emerald-500 rounded mr-3"></div>

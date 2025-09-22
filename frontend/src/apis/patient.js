@@ -14,3 +14,45 @@ export const createPatientProfile = async (formData) => {
   }
 };
 
+export const getPatientByID = async (id) => {
+  try {
+    const { data } = await api.get(`/patient/${id}`);
+    return data;
+  } catch (error) {
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error creating patient profile";
+    throw new Error(backendMessage);
+  }
+};
+
+export const updateProfessionalInfo = async (id, professionalForm) => {
+  try {
+    const { data } = await api.put(
+      `/patient/update-profile/${id}`,
+      professionalForm
+    );
+    return data;
+  } catch (error) {
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error updating patient profile";
+    throw new Error(backendMessage);
+  }
+};
+
+export const nextAppointments = async () => {
+  try {
+    const { data } = await api.get("/patient/next-appointment");
+    console.log(data);
+    return data;
+  } catch (error) {
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error fetching upcoming appointments";
+    throw new Error(backendMessage);
+  }
+};

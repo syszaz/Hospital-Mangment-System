@@ -14,64 +14,6 @@ export const createDoctorProfile = async (formData) => {
   }
 };
 
-export const todayAppointments = async () => {
-  try {
-    const response = await api.get("/doctor/appointments/today");
-    return response.data;
-  } catch (error) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Error fetching today's appointments";
-
-    throw new Error(backendMessage);
-  }
-};
-
-export const getComingWeekAppointments = async () => {
-  try {
-    const response = await api.get("/doctor/appointments/coming-week");
-    return response.data;
-  } catch (error) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Error fetching this week's appointments";
-
-    throw new Error(backendMessage);
-  }
-};
-
-export const todayREvenue = async () => {
-  try {
-    const response = await api.get("/doctor/today-revenue");
-    console.log(response);
-    return response.data;
-  } catch (error) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Error fetching today's revenue";
-
-    throw new Error(backendMessage);
-  }
-};
-
-export const thisWeekRevenue = async () => {
-  try {
-    const response = await api.get("/doctor/week-revenue");
-    console.log(response);
-    return response.data;
-  } catch (error) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Error fetching this week revenue";
-
-    throw new Error(backendMessage);
-  }
-};
-
 export const updateProfessionalInfo = async (id, professionalForm) => {
   try {
     const { data } = await api.put(
@@ -83,22 +25,8 @@ export const updateProfessionalInfo = async (id, professionalForm) => {
     const backendMessage =
       error?.response?.data?.message ||
       error?.message ||
-      "Error fetching today's revenue";
+      "Error doctor profile";
     throw new Error(backendMessage);
   }
 };
 
-export const allAppointments = async (id, status="all") => {
-  try {
-    const { data } = await api.get(`/appointment/appointments/all/${id}?status=${status}`);
-    console.log(data);
-    return data;
-  } catch (error) {
-    const banckendMesssage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Error fetching all appointments";
-
-    throw new Error(banckendMesssage);
-  }
-};

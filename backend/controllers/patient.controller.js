@@ -1,3 +1,5 @@
+import { Appointment } from "../models/Appointment.js";
+import { Doctor } from "../models/Doctor.js";
 import { Patient } from "../models/Patient.js";
 import { User } from "../models/User.js";
 import { sendEmail } from "../utils/sendEmail.js";
@@ -63,33 +65,40 @@ export const createPatientProfile = async (req, res, next) => {
 // Update Patient Profile
 export const updatePatientProfile = async (req, res, next) => {
   try {
-    const patientId = req.params.id;
-    const updates = req.body;
+    const userId = req.params.id;
+    const { gender, dateOfBirth, address, medicalHistory } = req.body;
 
-    if (!patientId) {
-      return res.status(400).json({ message: "Patient ID is required" });
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
     }
 
-    if (!updates || Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: "No updates provided" });
-    }
-
-    if (patientId !== req.user._id.toString()) {
+    if (userId !== req.user._id.toString()) {
       return res
         .status(403)
         .json({ message: "Unauthorized to update this profile" });
     }
 
-    const updatedPatient = await Patient.findByIdAndUpdate(patientId, updates, {
-      new: true,
-    });
+    const updates = {};
+    if (gender) updates.gender = gender;
+    if (dateOfBirth) updates.dateOfBirth = dateOfBirth;
+    if (address) updates.address = address;
+    if (medicalHistory) updates.medicalHistory = medicalHistory;
+
+    const updatedPatient = await Patient.findOneAndUpdate(
+      { user: userId },
+      updates,
+      { new: true }
+    );
 
     if (!updatedPatient) {
       return res.status(404).json({ message: "Patient profile not found" });
     }
 
+    const updatedUser = await User.findById(userId);
+
     res.status(200).json({
       message: "Patient profile updated successfully",
+      user: updatedUser,
       patient: updatedPatient,
     });
   } catch (error) {
@@ -125,10 +134,132 @@ export const deletePatientProfileAndAccount = async (req, res, next) => {
 };
 
 // List All Patients
-export const listAllPatients = async (req, res, next) => {
+export const listAllPatients = async (_req, res, next) => {
   try {
     const patients = await Patient.find().populate("user", "name email");
     res.status(200).json({ patients });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// get patient by id
+export const getPatientByID = async (req, res, next) => {
+  try {
+    const patientId = req.params.id;
+    if (!patientId) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient ID is required",
+      });
+    }
+
+    const doctorProfile = await Doctor.findOne({ user: req.user._id });
+    if (!doctorProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor profile not found",
+      });
+    }
+
+    const patientDoc = await Patient.findById(patientId).populate(
+      "user",
+      "name email phone"
+    );
+
+    if (!patientDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    const appointments = await Appointment.find({
+      patient: patientId,
+      doctor: doctorProfile._id,
+    })
+      .populate("doctor")
+      .sort({ date: -1 });
+
+    const patientData = {
+      _id: patientDoc._id,
+      name: patientDoc.user?.name,
+      email: patientDoc.user?.email,
+      phone: patientDoc.user?.phone,
+      gender: patientDoc.gender,
+      dateOfBirth: patientDoc.dateOfBirth,
+      address: patientDoc.address,
+      medicalHistory: patientDoc.medicalHistory || [],
+      lastAppointment: appointments[0]?.date || null,
+      totalVisits: appointments.length,
+      appointmentHistory: appointments.map((appt) => ({
+        _id: appt._id,
+        date: appt.date,
+        reason: appt.reason,
+        status: appt.status,
+        startTime: appt.startTime,
+        endTime: appt.endTime,
+        doctor: appt.doctor,
+      })),
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient details fetched successfully",
+      patient: patientData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// next appointment for the patient
+export const nextAppointments = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "user id not found",
+      });
+    }
+
+    const patient = await Patient.findOne({ user: userId });
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient profile not found",
+      });
+    }
+
+    const comingAppointments = await Appointment.find({
+      patient: patient._id,
+      date: { $gte: new Date() },
+    })
+      .populate({
+        path: "doctor",
+        populate: {
+          path: "user",
+          select: "name email phone role",
+        },
+        select: "specialty experience consultationFee",
+      })
+      .populate({
+        path: "patient",
+        populate: {
+          path: "user",
+          select: "name email phone role",
+        },
+        select: "gender dateOfBirth address",
+      })
+      .sort({ date: 1 });
+
+      const threeAppointments = comingAppointments.slice(0, 3);
+
+    return res.status(200).json({
+      success: true,
+      nextAppointments: threeAppointments || null,
+    });
   } catch (error) {
     next(error);
   }

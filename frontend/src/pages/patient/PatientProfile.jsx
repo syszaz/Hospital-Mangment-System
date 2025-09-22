@@ -1,168 +1,366 @@
 import React, { useEffect, useState } from "react";
-import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt } from "react-icons/fa";
-import { RiGenderlessLine } from "react-icons/ri";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { createPatientProfile } from "../../apis/patient";
+import { fetchUserProfileByEmail, updatePersonalInfo } from "../../apis/user";
+import { updateProfessionalInfo } from "../../apis/patient";
+import { logout } from "../../redux/slices/auth";
+import { setPatientProfile } from "../../redux/slices/patientProfile";
 
 const PatientProfile = () => {
-  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [message, setMessage] = useState(null);
+  const patientProfile = useSelector((state) => state.patientProfile.profile);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [personalForm, setPersonalForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+  });
+
+  const [isEditingPatient, setIsEditingPatient] = useState(false);
+  const [patientForm, setPatientForm] = useState({
     gender: "",
     dateOfBirth: "",
     address: "",
     medicalHistory: "",
   });
 
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
-    if (user) {
-      if (user.role === "patient") {
-        navigate("/patient/dashboard");
+    const loadProfile = async () => {
+      try {
+        if (user?.email) {
+          const profileData = await fetchUserProfileByEmail(user.email);
+          setProfile(profileData.user);
+
+          if (profileData.patientProfile) {
+            dispatch(setPatientProfile(profileData.patientProfile));
+            setPatientForm({
+              gender: profileData.patientProfile.gender || "",
+              dateOfBirth: profileData.patientProfile.dateOfBirth
+                ? profileData.patientProfile.dateOfBirth.split("T")[0]
+                : "",
+              address: profileData.patientProfile.address || "",
+              medicalHistory: (
+                profileData.patientProfile.medicalHistory || []
+              ).join(", "),
+            });
+          }
+        }
+      } catch (err) {
+        setError(err.message || "Failed to fetch profile");
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [user, navigate]);
+    };
+    loadProfile();
+  }, [user, dispatch]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      const newErrors = { ...errors };
-      delete newErrors[e.target.name];
-      setErrors(newErrors);
-    }
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/auth/signin");
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.gender) newErrors.gender = "Gender is required";
-    if (!formData.dateOfBirth)
-      newErrors.dateOfBirth = "Date of Birth is required";
-    if (!formData.address) newErrors.address = "Address is required";
-    return newErrors;
+  const editingPersonalInfo = () => {
+    setPersonalForm({
+      name: profile.name,
+      email: profile.email,
+      phone: profile.phone,
+      role: profile.role,
+    });
+    setIsEditingPersonal(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+  const handlePersonalChange = (e) => {
+    setPersonalForm({ ...personalForm, [e.target.name]: e.target.value });
+  };
 
-    setLoading(true);
-    setErrors({});
+  const handleSavePersonal = async () => {
     try {
-      const response = await createPatientProfile(formData);
-      setMessage(response.message);
-      navigate("/patient/dashboard");
-    } catch (error) {
-      setMessage(error.message || "Error submitting profile");
-    } finally {
-      setLoading(false);
+      const updated = await updatePersonalInfo(profile._id, personalForm);
+      setProfile(updated.user);
+      setIsEditingPersonal(false);
+    } catch (err) {
+      setError(err.message || "Failed to update personal profile info");
     }
   };
+
+  const editingPatientInfo = () => {
+    if (patientProfile) {
+      setPatientForm({
+        gender: patientProfile.gender || "",
+        dateOfBirth: patientProfile.dateOfBirth
+          ? patientProfile.dateOfBirth.split("T")[0]
+          : "",
+        address: patientProfile.address || "",
+        medicalHistory: patientProfile.medicalHistory || [],
+      });
+    }
+    setIsEditingPatient(true);
+  };
+
+  const handlePatientChange = (e) => {
+    setPatientForm({ ...patientForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSavePatient = async () => {
+    try {
+      const updated = await updateProfessionalInfo(profile._id, {
+        ...patientForm,
+        medicalHistory: patientForm.medicalHistory
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item !== ""),
+      });
+
+      setProfile(updated.user);
+      dispatch(setPatientProfile(updated.patient));
+
+      setPatientForm({
+        gender: updated.patient.gender || "",
+        dateOfBirth: updated.patient.dateOfBirth
+          ? updated.patient.dateOfBirth.split("T")[0]
+          : "",
+        address: updated.patient.address || "",
+        medicalHistory: (updated.patient.medicalHistory || []).join(", "),
+      });
+
+      setIsEditingPatient(false);
+    } catch (err) {
+      setError(err.message || "Failed to update patient profile info");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-emerald-600">Loading your profile...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
-        <div className="flex flex-col items-center mb-6">
-          <h2 className="text-3xl font-extrabold text-gray-800 my-0.5">
-            Patient Profile
-          </h2>
-          <p className="text-gray-500 font-bold">
-            Fill in your details to complete your profile.
-          </p>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg mr-3"></div>
+              Patient Profile
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Manage your personal and medical details
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+            Logout
+          </button>
         </div>
 
-        {message && (
-          <div className="bg-red-100 text-red-600 border border-red-400 rounded p-2 mb-4 text-sm text-center">
-            {message}
+        {profile ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
+              {!isEditingPersonal ? (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">
+                    Personal Information
+                  </h2>
+                  <p>
+                    <strong>Name:</strong> {profile.name}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {profile.email}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong> {profile.phone}
+                  </p>
+                  <p>
+                    <strong>Role:</strong> {profile.role}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">
+                    Edit Personal Information
+                  </h2>
+                  <input
+                    type="text"
+                    name="name"
+                    value={personalForm.name}
+                    onChange={handlePersonalChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                    placeholder="Name"
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    value={personalForm.email}
+                    onChange={handlePersonalChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                    placeholder="Email"
+                  />
+                  <input
+                    type="text"
+                    name="phone"
+                    value={personalForm.phone}
+                    onChange={handlePersonalChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                    placeholder="Phone"
+                  />
+                  <input
+                    type="text"
+                    name="role"
+                    value={personalForm.role}
+                    readOnly
+                    className="w-full mb-4 px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed"
+                  />
+                  <div className="flex space-x-4 mt-6">
+                    <button
+                      onClick={handleSavePersonal}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-lg">
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditingPersonal(false)}
+                      className="bg-gray-200 px-4 py-2 rounded-lg">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!isEditingPatient ? (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">
+                    Patient Information
+                  </h2>
+                  <p>
+                    <strong>Gender:</strong> {patientProfile?.gender}
+                  </p>
+                  <p>
+                    <strong>Date of Birth:</strong>{" "}
+                    {patientProfile?.dateOfBirth
+                      ? new Date(
+                          patientProfile.dateOfBirth
+                        ).toLocaleDateString()
+                      : "N/A"}
+                  </p>
+                  <p>
+                    <strong>Address:</strong> {patientProfile?.address}
+                  </p>
+                  <p>
+                    <strong>Medical History:</strong>{" "}
+                    {patientProfile?.medicalHistory?.length > 0
+                      ? patientProfile.medicalHistory.join(", ")
+                      : "None"}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">
+                    Edit Patient Information
+                  </h2>
+                  <select
+                    name="gender"
+                    value={patientForm.gender}
+                    onChange={handlePatientChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg">
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={patientForm.dateOfBirth}
+                    onChange={handlePatientChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                  />
+                  <textarea
+                    name="address"
+                    value={patientForm.address}
+                    onChange={handlePatientChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                    placeholder="Address"
+                  />
+                  <textarea
+                    name="medicalHistory"
+                    value={patientForm.medicalHistory}
+                    onChange={handlePatientChange}
+                    className="w-full mb-4 px-3 py-2 border rounded-lg"
+                    placeholder="Enter medical history (comma separated)"
+                  />
+
+                  <div className="flex space-x-4 mt-6">
+                    <button
+                      onClick={handleSavePatient}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditingPatient(false)}
+                      className="bg-gray-200 px-4 py-2 rounded-lg">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                <div className="w-20 h-20 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full"></div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  {profile.name}
+                </h3>
+                <p className="text-gray-600 mb-4">{patientProfile?.gender}</p>
+                <p className="text-sm text-gray-500">
+                  Member Since{" "}
+                  {new Date(profile.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-lg">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                  Profile Actions
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => editingPersonalInfo()}
+                    className="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md">
+                    Edit Personal Info
+                  </button>
+                  <button
+                    onClick={() => editingPatientInfo()}
+                    className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md">
+                    Edit Patient Info
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
+        ) : (
+          <p>No profile found</p>
         )}
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <RiGenderlessLine className="text-gray-400 text-lg mr-2" />
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700 bg-transparent">
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            {errors.gender && (
-              <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-gray-600 px-3 font-bold block">
-              Date of Birth
-            </label>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaCalendarAlt className="text-gray-400 text-lg mr-2" />
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-            {errors.dateOfBirth && (
-              <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaMapMarkerAlt className="text-gray-400 text-lg mr-2" />
-              <input
-                type="text"
-                name="address"
-                placeholder="Address"
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700"
-              />
-            </div>
-            {errors.address && (
-              <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-start border-b-2 border-emerald-400 focus-within:border-emerald-500 px-3 py-2">
-              <FaUserMd className="text-gray-400 text-lg mr-2 mt-2" />
-              <textarea
-                name="medicalHistory"
-                placeholder="Medical History (optional)"
-                value={formData.medicalHistory}
-                onChange={handleChange}
-                className="w-full outline-none text-gray-700 resize-none"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold shadow-md ${
-              loading && "bg-emerald-300"
-            }`}>
-            {loading ? "Submitting..." : "Submit Profile"}
-          </button>
-        </form>
       </div>
     </div>
   );

@@ -113,7 +113,7 @@ const DoctorProfile = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate("/auth/login");
+    navigate("/auth/signin");
   };
 
   if (loading) {
@@ -355,7 +355,6 @@ const DoctorProfile = () => {
                       Edit Professional Info
                     </h2>
 
-                    {/* Specialization */}
                     <input
                       type="text"
                       name="specialization"
@@ -365,17 +364,15 @@ const DoctorProfile = () => {
                       placeholder="Specialization"
                     />
 
-                    {/* Experience */}
                     <input
                       type="number"
-                      name="experience"
+                      name="experiedoctorProfilence"
                       value={professionalForm.experience}
                       onChange={handleProfessionalChange}
                       className="w-full mb-4 px-3 py-2 border rounded-lg"
                       placeholder="Experience in years"
                     />
 
-                    {/* Consultation Fee */}
                     <input
                       type="number"
                       name="consultationFee"
@@ -385,7 +382,6 @@ const DoctorProfile = () => {
                       placeholder="Consultation Fee"
                     />
 
-                    {/* Clinic Address */}
                     <textarea
                       name="clinicAddress"
                       value={professionalForm.clinicAddress}
