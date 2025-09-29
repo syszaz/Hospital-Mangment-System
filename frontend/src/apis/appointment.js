@@ -1,5 +1,6 @@
 import api from "./axios";
 
+// docotor side
 export const allAppointments = async (id, status = "all") => {
   try {
     const { data } = await api.get(
@@ -117,6 +118,20 @@ export const getAllPatients = async () => {
   try {
     const { data } = await api.get(`/appointment/all-patients`);
     console.log(data);
+    return data;
+  } catch (error) {
+    const banckendMesssage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error fetching all patients";
+    throw new Error(banckendMesssage);
+  }
+};
+
+// patient side
+export const patientAllAppointments = async (id, status = "all") => {
+  try {
+    const { data } = await api.get(`/appointment/all-appointments/${id}?status=${status}`);
     return data;
   } catch (error) {
     const banckendMesssage =

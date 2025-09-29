@@ -692,3 +692,50 @@ export const getDoctorPatients = async (req, res, next) => {
     next(error);
   }
 };
+
+// get all appointments for patient
+export const getPatientAppointments = async (req, res, next) => {
+  try {
+    const patientID = req.params.id;
+    const { status } = req.query;
+    if (!patientID) {
+      return res.status(400).json({ message: "patient ID is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(patientID)) {
+      return res.status(400).json({ message: "Invalid patient ID format" });
+    }
+
+    const patient = await Patient.findById(patientID);
+    if (!patient) {
+      return res.status(400).json({ message: "patient not found" });
+    }
+
+    const query = { patient: patientID };
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    const startOfToday = moment().startOf("day").toDate();
+    query.date = { $gte: startOfToday };
+
+    const appointments = await Appointment.find(query)
+      .populate({
+        path: "patient",
+        populate: { path: "user", select: "name email phone" },
+      })
+      .populate({
+        path: "doctor",
+        populate: { path: "user", select: "name email phone" },
+      })
+      .sort({ date: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: `${query?.status || "all"} appintments fetched succeessful`,
+      appointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

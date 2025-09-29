@@ -46,7 +46,6 @@ export const updateProfessionalInfo = async (id, professionalForm) => {
 export const nextAppointments = async () => {
   try {
     const { data } = await api.get("/patient/next-appointment");
-    console.log(data);
     return data;
   } catch (error) {
     const backendMessage =

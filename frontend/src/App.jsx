@@ -28,23 +28,25 @@ const App = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const loadDoctorProfile = async () => {
-      if (user?.role === "doctor" && user?.email) {
+    const loadProfile = async () => {
+      if (user?.email) {
         try {
           const profileData = await fetchUserProfileByEmail(user.email);
-          if (profileData?.doctorProfile) {
+
+          if (user.role === "doctor" && profileData?.doctorProfile) {
             dispatch(setDoctorProfile(profileData.doctorProfile));
           }
-          if (profileData?.patientProfile) {
+
+          if (user.role === "patient" && profileData?.patientProfile) {
             dispatch(setPatientProfile(profileData.patientProfile));
           }
         } catch (err) {
-          console.error("Error loading doctor profile:", err);
+          console.error("Error loading profile:", err);
         }
       }
     };
 
-    loadDoctorProfile();
+    loadProfile();
   }, [user, dispatch]);
 
   return (

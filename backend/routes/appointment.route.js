@@ -8,6 +8,7 @@ import {
   deleteAppointment,
   getAllAppointments,
   getDoctorPatients,
+  getPatientAppointments,
   getTodaysAppointments,
   getTodaysRevenueEstimate,
   getUpcomingWeekAppointments,
@@ -57,5 +58,6 @@ appointmentRouter.get(
 );
 appointmentRouter.get("/week-revenue", authMiddleware, revenueForThisWeek);
 appointmentRouter.get("/all-patients", authMiddleware, getDoctorPatients);
+appointmentRouter.get("/all-appointments/:id", authMiddleware, getPatientAppointments);
 
 export default appointmentRouter;
