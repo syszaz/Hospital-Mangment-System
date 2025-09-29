@@ -30,3 +30,16 @@ export const updateProfessionalInfo = async (id, professionalForm) => {
   }
 };
 
+export const listAllDoctors = async () => {
+  try {
+    const { data } = await api.get("/doctor/doctors");
+    console.log(data);
+    return data;
+  } catch (error) {
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error doctor profile";
+    throw new Error(backendMessage);
+  }
+};

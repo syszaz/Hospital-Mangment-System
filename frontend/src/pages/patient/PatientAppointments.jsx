@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { patientAllAppointments } from "../../apis/appointment";
 import { Tabs, Table, Button, Empty, Spin } from "antd";
-import AppointmentDetailsModal from "../doctor/AppointmentDetailsModal"; // reused modal
+import AppointmentDetailsModal from "../doctor/AppointmentDetailsModal";
 import { Search } from "lucide-react";
 
 const PatientAppointments = () => {
@@ -13,6 +13,7 @@ const PatientAppointments = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -22,7 +23,10 @@ const PatientAppointments = () => {
 
       setLoading(true);
       try {
-        const res = await patientAllAppointments(patientProfile._id, statusFilter);
+        const res = await patientAllAppointments(
+          patientProfile._id,
+          statusFilter
+        );
         setAppointments(res.appointments || []);
       } catch (err) {
         console.error("Error fetching appointments:", err.message);
@@ -34,9 +38,21 @@ const PatientAppointments = () => {
     fetchAppointments();
   }, [patientProfile, statusFilter]);
 
-  const filteredAppointments = appointments.filter((appt) =>
-    appt?.doctor?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const filteredAppointments = appointments.filter((appt) => {
+    const doctorName = appt?.doctor?.user?.name?.toLowerCase() || "";
+    const reason = appt?.reason?.toLowerCase() || "";
+    const search = debouncedSearch.toLowerCase();
+
+    return doctorName.includes(search) || reason.includes(search);
+  });
 
   const columns = [
     {
@@ -130,14 +146,13 @@ const PatientAppointments = () => {
         <p className="opacity-90">View and track your scheduled appointments</p>
       </div>
 
-      {/* Search */}
       <div className="relative w-2/3 mx-auto">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search by Doctor Name"
+          placeholder="Search by Doctor Name or Reason"
           className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 bg-white 
                shadow-sm placeholder-gray-400 text-gray-700 
                focus:outline-none focus:border-transparent 
@@ -147,7 +162,6 @@ const PatientAppointments = () => {
       </div>
 
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 border border-gray-100 mt-6">
-        {/* Tabs for status filter */}
         <Tabs
           activeKey={statusFilter}
           onChange={setStatusFilter}
