@@ -19,7 +19,7 @@ export const approveDoctor = async (req, res, next) => {
     doctor.status = "approved";
     await doctor.save();
 
-    await sendEmail({
+    sendEmail({
       to: doctor.user.email,
       subject: "Doctor Profile Approved",
       html: `
@@ -28,7 +28,13 @@ export const approveDoctor = async (req, res, next) => {
         <p>Patients can now view your profile and book appointments with you.</p>
         <p>Regards,<br/>Healthcare Platform Team</p>
       `,
-    });
+    })
+      .then(() => {
+        console.log("Appointment email sent successfully");
+      })
+      .catch((error) => {
+        console.error("Error sending appointment email:", error);
+      });
 
     res.status(200).json({
       message: "Doctor approved successfully and slots created for 30 days",

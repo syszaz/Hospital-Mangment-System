@@ -131,7 +131,22 @@ export const getAllPatients = async () => {
 // patient side
 export const patientAllAppointments = async (id, status = "all") => {
   try {
-    const { data } = await api.get(`/appointment/all-appointments/${id}?status=${status}`);
+    const { data } = await api.get(
+      `/appointment/all-appointments/${id}?status=${status}`
+    );
+    return data;
+  } catch (error) {
+    const banckendMesssage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error fetching all patients";
+    throw new Error(banckendMesssage);
+  }
+};
+
+export const bookAppointment = async (id, payload) => {
+  try {
+    const { data } = await api.post(`/appointment/book/${id}`, payload);
     return data;
   } catch (error) {
     const banckendMesssage =

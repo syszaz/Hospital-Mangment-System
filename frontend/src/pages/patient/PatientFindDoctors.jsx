@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Descriptions, Spin, Empty } from "antd";
+import { Table, Button, Modal, Descriptions, Spin, Empty, message } from "antd";
 import { listAllDoctors } from "../../apis/doctor";
 import { Search } from "lucide-react";
 import BookAppointmentModal from "./BookAppointmentModal";
+import { bookAppointment } from "../../apis/appointment";
 
 const PatientFindDoctors = () => {
   const [doctors, setDoctors] = useState([]);
@@ -20,7 +21,7 @@ const PatientFindDoctors = () => {
       const response = await listAllDoctors();
       setDoctors(response?.doctors || []);
     } catch (error) {
-      console.error("Error fetching doctors:", error);
+      message.error("Failed to fetch doctors");
     } finally {
       setLoading(false);
     }
@@ -34,7 +35,6 @@ const PatientFindDoctors = () => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchText);
     }, 500);
-
     return () => clearTimeout(handler);
   }, [searchText]);
 
@@ -43,10 +43,8 @@ const PatientFindDoctors = () => {
     const specialization = doc.specialization?.toLowerCase() || "";
     const clinicAddress = doc.clinicAddress?.toLowerCase() || "";
     const fee = doc.consultationFee || 0;
-
     const feeQuery = Number(debouncedSearch);
     const isFeeSearch = !isNaN(feeQuery);
-
     return (
       name.includes(debouncedSearch.toLowerCase()) ||
       specialization.includes(debouncedSearch.toLowerCase()) ||
@@ -54,6 +52,16 @@ const PatientFindDoctors = () => {
       (isFeeSearch && fee <= feeQuery)
     );
   });
+
+  const handleBookAppointment = async ({ doctorId, ...rest }) => {
+    try {
+      await bookAppointment(doctorId, rest);
+      message.success("Appointment booked successfully");
+      setBookingModalVisible(false);
+    } catch (error) {
+      message.error(error.message || "Failed to book appointment");
+    }
+  };
 
   const columns = [
     {
@@ -192,7 +200,7 @@ const PatientFindDoctors = () => {
         doctor={doctorToBook}
         onCancel={() => setBookingModalVisible(false)}
         onSubmit={(data) => {
-          console.log("Booking submitted:", data);
+          handleBookAppointment(data);
           setBookingModalVisible(false);
         }}
       />
