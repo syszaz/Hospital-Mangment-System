@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -15,27 +15,56 @@ import localeData from "dayjs/plugin/localeData";
 dayjs.extend(weekday);
 dayjs.extend(localeData);
 
-const BookAppointmentModal = ({ visible, onCancel, doctor, onSubmit }) => {
+const BookAppointmentModal = ({
+  visible,
+  onCancel,
+  doctor,
+  appointment,
+  mode = "book",
+  onSubmit,
+}) => {
   const [form] = Form.useForm();
   const [selectedDate, setSelectedDate] = useState(null);
 
+  useEffect(() => {
+    if (mode === "reschedule" && appointment) {
+      const date = dayjs(appointment.date);
+      setSelectedDate(date);
+      form.setFieldsValue({
+        date,
+        reason: appointment.reason,
+        slotId: appointment.slotId || appointment.slot?._id,
+      });
+    }
+  }, [mode, appointment, form]);
+
   const handleFinish = (values) => {
-    if (!doctor?._id) {
+    if (mode === "book" && !doctor?._id) {
       message.error("Doctor profile not found");
       return;
     }
 
     const payload = {
-      doctorId: doctor._id,
-      date: values.date.format("YYYY-MM-DD"),
       reason: values.reason,
       slotId: values.slotId,
     };
 
-    onSubmit(payload);
+    if (mode === "book") {
+      payload.date = values.date.format("YYYY-MM-DD");
+      payload.doctorId = doctor._id;
+    }
 
-    form.resetFields();
-    setSelectedDate(null);
+    if (mode === "reschedule") {
+      payload.newDate = values.date.format("YYYY-MM-DD");
+    }
+
+    try {
+      onSubmit(payload, mode);
+      form.resetFields();
+      setSelectedDate(null);
+    } catch (error) {
+      console.log("error occured")
+    }
   };
 
   return (
@@ -49,7 +78,9 @@ const BookAppointmentModal = ({ visible, onCancel, doctor, onSubmit }) => {
       footer={null}
       centered
       title={
-        <h2 className="text-xl font-bold text-emerald-600">Book Appointment</h2>
+        <h2 className="text-xl font-bold text-emerald-600">
+          {mode === "book" ? "Book Appointment" : "Reschedule Appointment"}
+        </h2>
       }>
       {doctor && (
         <div className="mb-4">
@@ -75,15 +106,13 @@ const BookAppointmentModal = ({ visible, onCancel, doctor, onSubmit }) => {
           <DatePicker
             className="w-full"
             format="YYYY-MM-DD"
-            disabledDate={(current) => {
-              return current && current.isBefore(dayjs().startOf("day"), "day");
-            }}
+            disabledDate={(current) =>
+              current && current.isBefore(dayjs().startOf("day"), "day")
+            }
             onChange={(date) => {
               setSelectedDate(date);
-
               if (!date) return;
               const weekday = date.format("dddd");
-
               if (doctor?.daysOff?.includes(weekday)) {
                 Modal.error({
                   title: "Doctor is Unavailable",
@@ -120,7 +149,7 @@ const BookAppointmentModal = ({ visible, onCancel, doctor, onSubmit }) => {
             type="primary"
             htmlType="submit"
             className="bg-emerald-500 hover:bg-emerald-600 border-none w-full">
-            Confirm Booking
+            {mode === "book" ? "Confirm Booking" : "Confirm Reschedule"}
           </Button>
         </Form.Item>
       </Form>

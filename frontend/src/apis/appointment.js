@@ -152,7 +152,33 @@ export const bookAppointment = async (id, payload) => {
     const banckendMesssage =
       error?.response?.data?.message ||
       error?.message ||
-      "Error fetching all patients";
+      "Error booking an appointment";
     throw new Error(banckendMesssage);
+  }
+};
+
+export const updateAppointment = async (id, payload) => {
+  try {
+    const { data } = await api.put(`/appointment/update/${id}`, payload);
+    return data;
+  } catch (error) {
+    const banckendMesssage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error updating appointment";
+    throw new Error(banckendMesssage);
+  }
+};
+
+export const deleteAppointment = async (id) => {
+  try {
+    const { data } = api.delete(`/appointment/delete/${id}`);
+    return data;
+  } catch (error) {
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "error deleting appointment";
+    throw new Error(backendMessage);
   }
 };

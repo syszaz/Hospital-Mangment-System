@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { patientAllAppointments } from "../../apis/appointment";
-import { Tabs, Table, Button, Empty, Spin } from "antd";
+import {
+  deleteAppointment,
+  patientAllAppointments,
+  updateAppointment,
+} from "../../apis/appointment";
+import { Tabs, Table, Button, Empty, Spin, message, Popconfirm } from "antd";
 import AppointmentDetailsModal from "../doctor/AppointmentDetailsModal";
 import { Search } from "lucide-react";
+import BookAppointmentModal from "./BookAppointmentModal";
 
 const PatientAppointments = () => {
   const patientProfile = useSelector((state) => state.patientProfile.profile);
@@ -14,27 +19,25 @@ const PatientAppointments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+
+  const fetchAppointments = async () => {
+    if (!patientProfile?._id) return;
+    setLoading(true);
+    try {
+      const res = await patientAllAppointments(
+        patientProfile._id,
+        statusFilter
+      );
+      setAppointments(res.appointments || []);
+    } catch (err) {
+      console.error("Error fetching appointments:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      if (!patientProfile?._id) {
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const res = await patientAllAppointments(
-          patientProfile._id,
-          statusFilter
-        );
-        setAppointments(res.appointments || []);
-      } catch (err) {
-        console.error("Error fetching appointments:", err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAppointments();
   }, [patientProfile, statusFilter]);
 
@@ -42,7 +45,6 @@ const PatientAppointments = () => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);
     }, 500);
-
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
@@ -50,9 +52,24 @@ const PatientAppointments = () => {
     const doctorName = appt?.doctor?.user?.name?.toLowerCase() || "";
     const reason = appt?.reason?.toLowerCase() || "";
     const search = debouncedSearch.toLowerCase();
-
     return doctorName.includes(search) || reason.includes(search);
   });
+
+  const handleDelete = async (record) => {
+    if (record.status !== "pending") {
+      message.warning("Only pending appointments can be deleted");
+      return;
+    }
+    try {
+      await deleteAppointment(record._id);
+      message.success("Appointment deleted successfully");
+      fetchAppointments();
+    } catch (err) {
+      message.error(
+        err.response?.data?.message || "Error deleting appointment"
+      );
+    }
+  };
 
   const columns = [
     {
@@ -112,14 +129,39 @@ const PatientAppointments = () => {
     {
       title: "Actions",
       render: (_, record) => (
-        <Button
-          className="border-gray-300 hover:border-emerald-500 hover:text-emerald-600"
-          onClick={() => {
-            setSelectedAppointment(record);
-            setDetailsVisible(true);
-          }}>
-          Details
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="border-gray-300 hover:border-emerald-500 hover:text-emerald-600"
+            onClick={() => {
+              setSelectedAppointment(record);
+              setDetailsVisible(true);
+            }}>
+            Details
+          </Button>
+          {record.status === "pending" && (
+            <>
+              <Button
+                className="border-gray-300 hover:border-blue-500 hover:text-blue-600"
+                onClick={() => {
+                  setSelectedAppointment(record);
+                  setShowRescheduleModal(true);
+                }}>
+                Reschedule
+              </Button>
+              <Popconfirm
+                title="Are you sure to delete this appointment?"
+                onConfirm={() => handleDelete(record)}
+                okText="Yes"
+                cancelText="No">
+                <Button
+                  danger
+                  className="border-gray-300 hover:border-red-500 hover:text-red-600">
+                  Delete
+                </Button>
+              </Popconfirm>
+            </>
+          )}
+        </div>
       ),
     },
   ];
@@ -192,6 +234,29 @@ const PatientAppointments = () => {
         onClose={() => setDetailsVisible(false)}
         appointment={selectedAppointment}
         mode="patient"
+      />
+
+      <BookAppointmentModal
+        visible={showRescheduleModal}
+        onCancel={() => setShowRescheduleModal(false)}
+        appointment={selectedAppointment}
+        doctor={selectedAppointment?.doctor}
+        mode="reschedule"
+        onSubmit={async (payload, mode) => {
+          try {
+            if (mode === "reschedule") {
+              console.log(payload);
+              await updateAppointment(selectedAppointment._id, payload);
+              message.success("Appointment rescheduled successfully");
+            }
+            setShowRescheduleModal(false);
+            fetchAppointments();
+          } catch (err) {
+            message.error(
+              err.response?.data?.message || "Error updating appointment"
+            );
+          }
+        }}
       />
     </div>
   );

@@ -114,16 +114,24 @@ export const SignInUser = async (req, res, next) => {
       }
     }
 
+    const userResponse = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    if (user.role === "patient" || user.role === "doctor") {
+      userResponse.hasProfile = hasProfile;
+    }
+
+    if (user.role === "doctor") {
+      userResponse.isApproved = isApproved;
+    }
+
     return res.status(201).json({
       success: true,
       message: "User signin successfully",
-      user: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        hasProfile,
-        ...(user.role === "doctor" && { isApproved }),
-      },
+      user: userResponse,
       token,
     });
   } catch (error) {

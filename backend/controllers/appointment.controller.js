@@ -131,38 +131,38 @@ export const bookAppointment = async (req, res, next) => {
 };
 
 // update date of an appointment
-export const updateAppointmentDate = async (req, res, next) => {
+export const updateAppointment = async (req, res, next) => {
   try {
     const appointmentId = req.params.id;
-    const { newDate } = req.body;
-    const patientId = req.user._id;
+    const { newDate, slotId, reason } = req.body;
 
-    if (!newDate) {
-      return res.status(400).json({ message: "New date is required" });
-    }
+    const appointment = await Appointment.findById(appointmentId).populate(
+      "patient"
+    );
 
-    const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
     }
-    if (appointment.patient.toString() !== patientId.toString()) {
+
+    console.log(req.body);
+
+    if (!newDate || !slotId || !reason) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (
+      !appointment.patient ||
+      appointment.patient.user.toString() !== req.user._id.toString()
+    ) {
       return res
         .status(403)
         .json({ message: "You are not authorized to update this appointment" });
     }
+
     if (appointment.status !== "pending") {
       return res
         .status(400)
         .json({ message: "Only pending appointments can be updated" });
-    }
-
-    const selectedDate = moment(newDate).startOf("day");
-    const today = moment().startOf("day");
-
-    if (selectedDate.isBefore(today)) {
-      return res
-        .status(400)
-        .json({ message: "Cannot book appointment for past dates" });
     }
 
     const doctor = await Doctor.findById(appointment.doctor);
@@ -170,52 +170,64 @@ export const updateAppointmentDate = async (req, res, next) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    const alreadyBooked = await Appointment.findOne({
-      doctor: appointment.doctor,
-      patient: patientId,
-      date: selectedDate.toDate(),
-      status: { $in: ["pending", "confirmed"] },
-    });
+    if (reason) {
+      appointment.reason = reason;
+    }
 
-    if (alreadyBooked) {
-      return res.status(400).json({
-        message: "You have already booked an appointment on this date",
+    if (newDate && slotId) {
+      const selectedDate = moment(newDate, "YYYY-MM-DD", true).startOf("day");
+      const today = moment().startOf("day");
+
+      if (!selectedDate.isValid()) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      if (selectedDate.isBefore(today)) {
+        return res
+          .status(400)
+          .json({ message: "Cannot update appointment for past dates" });
+      }
+
+      const dayOfWeek = selectedDate.format("dddd");
+
+      if (doctor.daysOff.includes(dayOfWeek)) {
+        return res.status(400).json({ message: "Doctor is off on this day" });
+      }
+
+      const selectedSlot = doctor.availability.find(
+        (s) => s._id.toString() === slotId && s.day === dayOfWeek
+      );
+
+      if (!selectedSlot) {
+        return res.status(400).json({
+          message: `Invalid slot selected. Doctor not available on ${dayOfWeek} with this slot`,
+        });
+      }
+
+      const bookedCount = await Appointment.countDocuments({
+        doctor: appointment.doctor,
+        date: selectedDate.toDate(),
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        status: { $in: ["pending", "confirmed"] },
       });
+
+      if (bookedCount >= selectedSlot.maxPatientsPerDay) {
+        return res
+          .status(400)
+          .json({ message: "No slots available on this date" });
+      }
+
+      appointment.date = selectedDate.toDate();
+      appointment.startTime = selectedSlot.startTime;
+      appointment.endTime = selectedSlot.endTime;
     }
 
-    const dayOfWeek = selectedDate.format("dddd");
-
-    if (doctor.daysOff.some((day) => moment(day).isSame(selectedDate, "day"))) {
-      return res.status(400).json({ message: "Doctor is off on this date" });
-    }
-
-    const availability = doctor.availability.find((d) => d.day === dayOfWeek);
-    if (!availability) {
-      return res
-        .status(400)
-        .json({ message: `Doctor is not available on ${dayOfWeek}s` });
-    }
-
-    const bookedCount = await Appointment.countDocuments({
-      doctor: appointment.doctor,
-      date: selectedDate.toDate(),
-      status: { $in: ["pending", "confirmed"] },
-    });
-
-    if (bookedCount >= availability.maxPatientsPerDay) {
-      return res
-        .status(400)
-        .json({ message: "No slots available on this date" });
-    }
-
-    appointment.date = selectedDate.toDate();
-    appointment.startTime = availability.startTime;
-    appointment.endTime = availability.endTime;
     await appointment.save();
 
     res.status(200).json({
       success: true,
-      message: "Appointment date updated successfully",
+      message: "Appointment updated successfully",
       appointment,
     });
   } catch (error) {
@@ -227,24 +239,30 @@ export const updateAppointmentDate = async (req, res, next) => {
 export const deleteAppointment = async (req, res, next) => {
   try {
     const appointmentId = req.params.id;
-    const patientId = req.user._id;
 
-    const appointment = await Appointment.findById(appointmentId);
+    const appointment = await Appointment.findById(appointmentId).populate(
+      "patient"
+    );
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
     }
-    if (appointment.patient.toString() !== patientId.toString()) {
+
+    if (
+      !appointment.patient ||
+      appointment.patient.user.toString() !== req.user._id.toString()
+    ) {
       return res
         .status(403)
-        .json({ message: "You are not authorized to delete this appointment" });
+        .json({ message: "You are not authorized to update this appointment" });
     }
+
     if (appointment.status !== "pending") {
       return res
         .status(400)
         .json({ message: "Only pending appointments can be deleted" });
     }
 
-    await appointment.remove();
+    await appointment.deleteOne();
 
     res
       .status(200)

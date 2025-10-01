@@ -13,13 +13,13 @@ import {
   getTodaysRevenueEstimate,
   getUpcomingWeekAppointments,
   revenueForThisWeek,
-  updateAppointmentDate,
+  updateAppointment,
 } from "../controllers/appointment.controller.js";
 
 const appointmentRouter = express.Router();
 
 appointmentRouter.post("/book/:id", authMiddleware, bookAppointment);
-appointmentRouter.put("/update/:id", authMiddleware, updateAppointmentDate);
+appointmentRouter.put("/update/:id", authMiddleware, updateAppointment);
 appointmentRouter.delete("/delete/:id", authMiddleware, deleteAppointment);
 appointmentRouter.get(
   "/appointments/all/:id",
@@ -58,6 +58,10 @@ appointmentRouter.get(
 );
 appointmentRouter.get("/week-revenue", authMiddleware, revenueForThisWeek);
 appointmentRouter.get("/all-patients", authMiddleware, getDoctorPatients);
-appointmentRouter.get("/all-appointments/:id", authMiddleware, getPatientAppointments);
+appointmentRouter.get(
+  "/all-appointments/:id",
+  authMiddleware,
+  getPatientAppointments
+);
 
 export default appointmentRouter;

@@ -1,4 +1,6 @@
 import { Doctor } from "../models/Doctor.js";
+import { Patient } from "../models/Patient.js";
+import {Appointment} from "../models/Appointment.js"
 import { sendEmail } from "../utils/sendEmail.js";
 
 // approve doctor
@@ -97,3 +99,54 @@ export const getNotApprovedDoctors = async (req, res, next) => {
     next(error);
   }
 };
+
+// get total doctors, patients, appointments list
+export const fullList = async (req, res, next) => {
+  try {
+    const doctors = await Doctor.find().populate("user");
+
+    const patients = await Patient.find().populate("user");
+
+    const appointments = await Appointment.find()
+      .populate({
+        path: "doctor",
+        populate: { path: "user" },
+      })
+      .populate({
+        path: "patient",
+        populate: { path: "user" },
+      });
+
+    const totalDoctors = doctors.length;
+    const pendingDoctors = doctors.filter(
+      (doc) => doc.status === "pending"
+    ).length;
+
+    const totalPatients = patients.length;
+
+    const totalAppointments = appointments.length;
+    const appointmentStats = {
+      pending: appointments.filter((a) => a.status === "pending").length,
+      confirmed: appointments.filter((a) => a.status === "confirmed").length,
+      cancelled: appointments.filter((a) => a.status === "cancelled").length,
+      completed: appointments.filter((a) => a.status === "completed").length,
+    };
+
+    return res.status(200).json({
+      success: true,
+      doctors,
+      patients,
+      appointments,
+      stats: {
+        totalDoctors,
+        pendingDoctors,
+        totalPatients,
+        totalAppointments,
+        appointmentStats,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

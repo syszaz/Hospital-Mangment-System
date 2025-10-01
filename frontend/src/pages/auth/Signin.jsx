@@ -18,7 +18,9 @@ const Signin = () => {
 
   useEffect(() => {
     if (user) {
-      if (!user.hasProfile) {
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else if (!user.hasProfile) {
         if (user.role === "doctor") {
           navigate("/doctor/create-profile");
         } else if (user.role === "patient") {
@@ -72,7 +74,6 @@ const Signin = () => {
     }
     setErrors({});
     dispatch(signinUser(formData));
-    console.log(formData);
   };
 
   return (

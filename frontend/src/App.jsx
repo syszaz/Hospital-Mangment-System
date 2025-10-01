@@ -22,6 +22,13 @@ import PatientLayout from "./layouts/PatientLayout";
 import PatientProfile from "./pages/patient/PatientProfile";
 import PatientAppointments from "./pages/patient/PatientAppointments";
 import PatientFindDoctors from "./pages/patient/PatientFindDoctors";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminProfile from "./pages/admin/AdminProfile";
+import ApproveDoctors from "./pages/admin/ApproveDoctors";
+import AllDoctors from "./pages/admin/AllDoctors";
+import AllPatients from "./pages/admin/AllPatients";
+import AllAppointments from "./pages/admin/AllAppointments";
+
 
 const App = () => {
   const { user, token } = useSelector((state) => state.auth);
@@ -89,14 +96,23 @@ const App = () => {
       </Route>
 
       <Route element={<ProtectedRoute role="admin" />}>
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/approve-doctors" element={<ApproveDoctors />} />
+          <Route path="/admin/all-appointments" element={<AllAppointments />} />
+          <Route path="/admin/all-doctors" element={<AllDoctors />} />
+          <Route path="/admin/all-patients" element={<AllPatients />} />
+          <Route path="/admin/profile" element={<AdminProfile />} />
+        </Route>
       </Route>
 
       <Route
         path="/"
         element={
           token && user ? (
-            !user.hasProfile ? (
+            user.role === "admin" ? (
+              <Navigate to="/admin/dashboard" />
+            ) : !user.hasProfile ? (
               <Navigate to={`/${user.role}/create-profile`} />
             ) : (
               <Navigate to={`/${user.role}/dashboard`} />
